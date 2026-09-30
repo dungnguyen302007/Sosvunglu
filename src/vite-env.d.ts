@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_SOS_SMS_NUMBER?: string
   /** Số gọi cứu hộ địa phương (mặc định 112) */
   readonly VITE_RESCUE_HOTLINE?: string
+  /** Địa chỉ ô bản đồ riêng (có khóa), dạng https://.../{z}/{x}/{y}.png */
+  readonly VITE_MAP_TILE_URL?: string
 }
 
 interface ImportMeta {

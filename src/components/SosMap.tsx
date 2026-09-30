@@ -9,18 +9,29 @@ import type { RescuerLocation, Sos } from '../types'
 
 const DEFAULT_CENTER: LatLng = { lat: 16.4637, lng: 107.5909 } // Huế
 
-/** Nền bản đồ: sáng, sạch, gần giống Google Maps; có thêm chế độ vệ tinh. */
+/**
+ * Nền bản đồ, không cần khóa:
+ *  - Bản đồ: Esri World Street Map (sáng, sạch, gần giống Google Maps)
+ *  - OpenStreetMap: dự phòng nếu nền trên lỗi
+ *  - Vệ tinh: Esri World Imagery
+ * Có khóa riêng (MapTiler, Stadia...) thì đặt VITE_MAP_TILE_URL để thay nền đầu tiên.
+ */
+const CUSTOM_TILE_URL = import.meta.env.VITE_MAP_TILE_URL
+
 const TILES = {
   street: {
-    url: 'https://{s}.basemaps.cartocdn.com/rest/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20,
+    url: CUSTOM_TILE_URL || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: CUSTOM_TILE_URL ? '&copy; OpenStreetMap' : 'Tiles &copy; Esri',
+    maxZoom: 19,
+  },
+  osm: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri',
-    subdomains: '',
     maxZoom: 19,
   },
 }
@@ -30,6 +41,9 @@ function BaseLayers() {
     <LayersControl position="topright">
       <LayersControl.BaseLayer checked name="Bản đồ">
         <TileLayer {...TILES.street} />
+      </LayersControl.BaseLayer>
+      <LayersControl.BaseLayer name="OpenStreetMap">
+        <TileLayer {...TILES.osm} />
       </LayersControl.BaseLayer>
       <LayersControl.BaseLayer name="Vệ tinh">
         <TileLayer {...TILES.satellite} />
