@@ -17,11 +17,12 @@ const DEFAULT_CENTER: LatLng = { lat: 16.4637, lng: 107.5909 } // Huế
  * Có khóa riêng (MapTiler, Stadia...) thì đặt VITE_MAP_TILE_URL để thay nền đầu tiên.
  */
 const CUSTOM_TILE_URL = import.meta.env.VITE_MAP_TILE_URL
+const CUSTOM_ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION || '&copy; OpenStreetMap contributors'
 
 const TILES = {
   street: {
     url: CUSTOM_TILE_URL || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: CUSTOM_TILE_URL ? '&copy; OpenStreetMap' : 'Tiles &copy; Esri',
+    attribution: CUSTOM_TILE_URL ? CUSTOM_ATTRIBUTION : 'Tiles &copy; Esri',
     maxZoom: 19,
   },
   osm: {

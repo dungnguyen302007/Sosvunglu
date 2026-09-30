@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_RESCUE_HOTLINE?: string
   /** Địa chỉ ô bản đồ riêng (có khóa), dạng https://.../{z}/{x}/{y}.png */
   readonly VITE_MAP_TILE_URL?: string
+  /** Dòng ghi nguồn bản đồ riêng (nhà cung cấp yêu cầu), vd "&copy; MapTiler &copy; OpenStreetMap contributors" */
+  readonly VITE_MAP_ATTRIBUTION?: string
 }
 
 interface ImportMeta {
