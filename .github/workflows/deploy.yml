@@ -28,12 +28,12 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-          VITE_SOS_SMS_NUMBER: ${{ vars.VITE_SOS_SMS_NUMBER }}
-          VITE_RESCUE_HOTLINE: ${{ vars.VITE_RESCUE_HOTLINE }}
-          VITE_MAP_TILE_URL: ${{ vars.VITE_MAP_TILE_URL }}
-          VITE_MAP_ATTRIBUTION: ${{ vars.VITE_MAP_ATTRIBUTION }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SOS_SMS_NUMBER: ${{ vars.VITE_SOS_SMS_NUMBER || secrets.VITE_SOS_SMS_NUMBER }}
+          VITE_RESCUE_HOTLINE: ${{ vars.VITE_RESCUE_HOTLINE || secrets.VITE_RESCUE_HOTLINE }}
+          VITE_MAP_TILE_URL: ${{ vars.VITE_MAP_TILE_URL || secrets.VITE_MAP_TILE_URL }}
+          VITE_MAP_ATTRIBUTION: ${{ vars.VITE_MAP_ATTRIBUTION || secrets.VITE_MAP_ATTRIBUTION }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

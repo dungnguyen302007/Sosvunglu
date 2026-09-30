@@ -36,7 +36,7 @@ chỉ huy `0900000001`, cứu hộ `0900000002`, người dân `0900000003`.
 
 1. Repo phải **public** (GitHub Free).
 2. **Settings → Pages → Source: GitHub Actions**.
-3. **Settings → Secrets and variables → Actions → Variables**: thêm `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (tùy chọn `VITE_SOS_SMS_NUMBER`, `VITE_RESCUE_HOTLINE`).
+3. **Settings → Secrets and variables → Actions → Variables** (hoặc Secrets, workflow đọc cả hai): thêm `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (tùy chọn `VITE_SOS_SMS_NUMBER`, `VITE_RESCUE_HOTLINE`).
 4. Push/merge vào `main` → workflow `.github/workflows/deploy.yml` tự build và deploy.
 
 ## Chuyển lên VPS sau này
