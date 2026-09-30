@@ -1,6 +1,6 @@
 # KẾ HOẠCH — Webapp SOS vùng lũ
 
-_Bản nháp 2026-09-30, chờ người dùng duyệt._
+_Đã chốt 2026-09-30. GĐ1 đã làm xong phần code (xem HANDOFF.md)._
 
 ## 1. Mục tiêu
 
@@ -133,9 +133,9 @@ Tài khoản cứu hộ và chỉ huy **không tự đăng ký được**. Ngư�
 - **SOS vệ tinh trên điện thoại** (iPhone, Pixel): hiện chưa dùng được ở Việt Nam.
 - **Việt Nam**: thongtincuuho.org (lũ Thái Nguyên), hotronguoicuutro.inhandao.vn (Hội Chữ thập đỏ, lũ miền Trung), "La Bàn Cứu Hộ". Các trang này chủ yếu **gom thông tin từ mạng xã hội rồi vẽ lên bản đồ**, người dân không tự gửi GPS được và chưa có điều phối đội. → Điểm khác biệt của mình: **một nút gửi GPS ngay, đăng ký trước nên hồ sơ đầy đủ, tự động giao cho đội gần nhất**.
 
-## 11. Cần bạn chốt
+## 11. Đã chốt
 
-1. Ai đóng vai **chỉ huy** trong thực tế (xã, tỉnh, đội tình nguyện)? Dùng ở vùng nào trước?
-2. **Số tổng đài** nhận SMS và cuộc gọi dự phòng là số nào?
-3. Đồng ý để **repo public** (để dùng GitHub Pages miễn phí) không?
-4. Có đồng ý **nhấn giữ 2 giây** (chống bấm nhầm) thay vì chạm một lần không?
+1. Chỉ huy: vai trò trong app, cấp bằng SQL cho tài khoản đầu tiên. Tổ chức và vùng triển khai cụ thể thì chốt sau.
+2. Số tổng đài SMS và số hotline: để trong biến cấu hình `VITE_SOS_SMS_NUMBER`, `VITE_RESCUE_HOTLINE`, điền khi có số.
+3. Repo để public để dùng GitHub Pages miễn phí.
+4. Nút SOS: nhấn giữ 2 giây.
