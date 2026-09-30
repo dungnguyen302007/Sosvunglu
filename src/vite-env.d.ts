@@ -12,8 +12,17 @@ interface ImportMetaEnv {
   readonly VITE_MAP_TILE_URL?: string
   /** Dòng ghi nguồn bản đồ riêng (nhà cung cấp yêu cầu), vd "&copy; MapTiler &copy; OpenStreetMap contributors" */
   readonly VITE_MAP_ATTRIBUTION?: string
+  /** Khóa Google Maps JavaScript API (tùy chọn, có tính phí sau hạn mức miễn phí) */
+  readonly VITE_GOOGLE_MAPS_KEY?: string
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv
+}
+
+declare module 'leaflet.gridlayer.googlemutant/src/Leaflet.GoogleMutant.mjs' {
+  import { GridLayer, type GridLayerOptions } from 'leaflet'
+  export default class GoogleMutant extends GridLayer {
+    constructor(options?: GridLayerOptions & { type?: 'roadmap' | 'satellite' | 'terrain' | 'hybrid' })
+  }
 }

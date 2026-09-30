@@ -15,6 +15,7 @@ Webapp PWA SOS vùng lũ đã **deploy lên GitHub Pages** (`https://dungnguyen3
 - Hạ tầng: workflow `.github/workflows/deploy.yml` (đọc biến từ Variables hoặc Secrets), `main` được tạo từ nhánh làm việc, đã cho phép **luôn cập nhật `main`** (ghi trong `CLAUDE.md`).
 
 ## Còn dở / chưa xong
+- **Google Maps đã tích hợp nhưng chưa thử với khóa thật** (máy chủ cloud bị chặn). Cần người dùng tạo khóa Google, đặt hạn mức ngày, thêm Secret `VITE_GOOGLE_MAPS_KEY` (xem README). Đã thử bằng trình duyệt: không khóa / Google bị chặn / Google báo lỗi khóa đều tự về nền miễn phí, app không sập.
 - **MapTiler "Invalid key"**: người dùng đã dán địa chỉ `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=...` vào Secret `VITE_MAP_TILE_URL` (và `VITE_MAP_ATTRIBUTION`) và đã chạy lại deploy; **chưa nhận kết quả**. Nếu vẫn Invalid key: nghi khóa gõ sai (nhầm `l`/`I`, `0`/`O`) hoặc ô Allowed HTTP Origins (`dungnguyen302007.github.io`). Đã thử ghi khóa vào `.env.production` nhưng bị chặn (lộ khóa vào repo công khai) và đã hoàn tác; không làm lại cách này.
 - **Chưa xác nhận Supabase thật**: Secrets `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` nằm ở mục Secrets (không phải Variables); workflow đã sửa để đọc cả hai. Kiểm tra: màn đăng nhập còn khung xanh "Bản chạy thử" thì đang demo. Nếu chuyển sang thật, tài khoản demo cũ mất, phải đăng ký lại `0702760399`.
 - **Chưa cấp quyền chỉ huy** cho `0702760399`: chạy trong Supabase SQL Editor `update profiles set role = 'commander' where phone = '0702760399';` rồi đăng nhập lại.

@@ -39,6 +39,18 @@ chỉ huy `0900000001`, cứu hộ `0900000002`, người dân `0900000003`.
 3. **Settings → Secrets and variables → Actions → Variables** (hoặc Secrets, workflow đọc cả hai): thêm `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (tùy chọn `VITE_SOS_SMS_NUMBER`, `VITE_RESCUE_HOTLINE`).
 4. Push/merge vào `main` → workflow `.github/workflows/deploy.yml` tự build và deploy.
 
+## Bản đồ Google Maps (tùy chọn, có tính phí sau hạn mức miễn phí)
+
+App có sẵn nền Esri và OpenStreetMap miễn phí. Có khóa Google thì Google Maps thành nền mặc định (kèm Google Vệ tinh); lỗi khóa hoặc lỗi mạng thì tự quay về nền miễn phí.
+
+1. https://console.cloud.google.com → tạo project → **Billing** gắn thẻ thanh toán.
+2. **APIs & Services → Library** → bật **Maps JavaScript API**.
+3. **Credentials → Create credentials → API key**. Bấm vào khóa: **Application restrictions = Websites**, thêm `https://dungnguyen302007.github.io/*`; **API restrictions = Maps JavaScript API**.
+4. **Bắt buộc đặt hạn mức ngày** (không đặt thì bị tính tiền không giới hạn): **APIs & Services → Maps JavaScript API → Quotas** → sửa **Map loads per day** về mức bạn chịu được (VD 300/ngày ≈ 9.000/tháng, nằm trong hạn mức miễn phí 10.000).
+5. GitHub → **Settings → Secrets and variables → Actions** → thêm `VITE_GOOGLE_MAPS_KEY`. Chạy lại workflow **Deploy GitHub Pages**.
+
+Giá: 10.000 lượt tải bản đồ/tháng miễn phí, sau đó khoảng 7 USD/1.000 lượt (Google có thể đổi giá, xem trang giá chính thức). Google Maps không dùng được khi mất mạng.
+
 ## Chuyển lên VPS sau này
 
 `npm run build` → chép thư mục `dist/` lên VPS, phục vụ bằng Nginx (bắt buộc HTTPS để dùng GPS và PWA). Supabase giữ bản cloud hoặc tự cài bằng Docker.

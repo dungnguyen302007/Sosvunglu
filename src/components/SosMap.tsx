@@ -1,9 +1,12 @@
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Fragment, useMemo, type ReactNode } from 'react'
+import { createLayerComponent, type LayerProps } from '@react-leaflet/core'
+import GoogleMutant from 'leaflet.gridlayer.googlemutant/src/Leaflet.GoogleMutant.mjs'
+import { Component, Fragment, useMemo, type ReactNode } from 'react'
 import { Circle, CircleMarker, LayersControl, MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { useEffect } from 'react'
 import type { LatLng } from '../lib/geo'
+import { GOOGLE_FAILED_EVENT, useGoogleStatus } from '../lib/googleMaps'
 import { PRIORITY_COLOR, priorityLevel, priorityScore } from '../lib/priority'
 import type { RescuerLocation, Sos } from '../types'
 
@@ -37,15 +40,53 @@ const TILES = {
   },
 }
 
+type GoogleType = 'roadmap' | 'hybrid'
+
+const GoogleLayer = createLayerComponent<GoogleMutant, LayerProps & { type: GoogleType }>((props, ctx) => ({
+  instance: new GoogleMutant({ type: props.type }),
+  context: ctx,
+}))
+
+/** Nếu lớp Google lỗi khi dựng thì báo để app quay về nền miễn phí, không làm sập màn hình. */
+class GoogleGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch() {
+    window.dispatchEvent(new Event(GOOGLE_FAILED_EVENT))
+  }
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
+
 function BaseLayers() {
+  const google = useGoogleStatus()
+  if (google === 'loading') return null // chờ Google tải xong để chọn nền mặc định đúng
+  const g = google === 'ready'
   return (
-    <LayersControl position="topright">
-      <LayersControl.BaseLayer checked name="Bản đồ">
+    <LayersControl position="topright" key={google}>
+      {g && (
+        <LayersControl.BaseLayer checked name="Google Maps">
+          <GoogleGuard>
+            <GoogleLayer type="roadmap" />
+          </GoogleGuard>
+        </LayersControl.BaseLayer>
+      )}
+      <LayersControl.BaseLayer checked={!g} name="Bản đồ">
         <TileLayer {...TILES.street} />
       </LayersControl.BaseLayer>
       <LayersControl.BaseLayer name="OpenStreetMap">
         <TileLayer {...TILES.osm} />
       </LayersControl.BaseLayer>
+      {g && (
+        <LayersControl.BaseLayer name="Google Vệ tinh">
+          <GoogleGuard>
+            <GoogleLayer type="hybrid" />
+          </GoogleGuard>
+        </LayersControl.BaseLayer>
+      )}
       <LayersControl.BaseLayer name="Vệ tinh">
         <TileLayer {...TILES.satellite} />
       </LayersControl.BaseLayer>

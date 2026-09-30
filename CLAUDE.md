@@ -5,7 +5,7 @@ Webapp (PWA) SOS vùng lũ: người dân nhấn giữ nút SOS gửi hồ sơ +
 ## Công nghệ
 
 - Vite + React 19 + TypeScript, `vite-plugin-pwa` (mở được khi mất mạng).
-- Bản đồ: Leaflet + react-leaflet; nền Esri (mặc định) / OpenStreetMap / Vệ tinh, nền riêng có khóa qua `VITE_MAP_TILE_URL` + `VITE_MAP_ATTRIBUTION` (Secrets GitHub, không commit khóa).
+- Bản đồ: Leaflet + react-leaflet; nền Esri (mặc định) / OpenStreetMap / Vệ tinh, nền riêng có khóa qua `VITE_MAP_TILE_URL` + `VITE_MAP_ATTRIBUTION`; Google Maps tùy chọn qua `VITE_GOOGLE_MAPS_KEY` (`src/lib/googleMaps.ts`, lớp `leaflet.gridlayer.googlemutant`, lỗi thì tự về nền miễn phí). Khóa để ở Secrets GitHub, không commit.
 - Backend: Supabase (Auth, Postgres + RLS, Realtime). Schema: `supabase/schema.sql`.
 - Chưa có biến môi trường Supabase → tự chạy **bản demo** lưu localStorage (`src/lib/backend/demo.ts`).
 - Hosting: GitHub Pages qua `.github/workflows/deploy.yml` (push `main`); sau này VPS.
