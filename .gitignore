@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Bí mật + ghi chú chỉ nằm trên máy (kho đang CÔNG KHAI) — thêm lúc /kickoff 30/09/2026
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*qr*.png
+*.tsbuildinfo
+CLAUDE.local.md
+.bang-tin-da-xu-ly

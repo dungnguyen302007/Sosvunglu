@@ -40,4 +40,16 @@ Kiểm tra SQL: container có Postgres 16 (`service postgresql start`); cần st
 - Người dùng đã cho phép **luôn cập nhật `main`** sau mỗi lần sửa xong (chỉ fast-forward: `git push origin HEAD:main`, không force). Web GitHub Pages tự deploy từ `main`.
 - Commit message ngắn gọn, dạng `loại: nội dung` (vd `feat: thêm nút SOS`, `fix: ...`, `docs: ...`).
 
+## Hướng đi đã chốt (30/09/2026) — xem `QUY-TRINH.md`
+
+- **Viết lại theo khuôn Greencie** (Next.js 15 + Prisma + PostgreSQL 16 + Docker Compose), chạy **trên VPS ACA trong một bộ Docker riêng** (compose, Postgres, mạng riêng; giới hạn RAM/CPU). Bản Vite + Supabase ở trên là bản đang chạy cho tới khi bản mới thay được — chép sang các hàm tính thuần (`priority`, `geo`, `dispatch`, `queue`) kèm bài kiểm, đừng viết lại.
+- Trong bản mới: đường dẫn, tên hàm, biến bằng **tiếng Việt không dấu** như khuôn Greencie (`gui-sos`, `doiGanNhat`).
+
+## Cạm bẫy
+
+- **Nhánh mặc định trên GitHub là `claude/quirky-bardeen-55tm7h` (cũ, chỉ có skill)** — mã thật ở `main`. Clone xong phải `git checkout main`.
+- Kho **công khai**: không ghi IP, đường dẫn VPS, tên container, khoá vào tệp nào trong kho. Thông tin máy chủ để ở `CLAUDE.local.md` (bị `.gitignore` chặn).
+- Tệp trong kho dùng CRLF trên máy Windows; `sed -i` của Git Bash có thể đổi sang LF.
+- Lệnh đưa chủ dự án tự chạy: PowerShell 5 (không `&&`).
+
 Đầu phiên chạy `/kickoff`. Cuối phiên chạy /handoff để cập nhật HANDOFF.md.

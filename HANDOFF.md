@@ -1,6 +1,11 @@
 # HANDOFF
 
-_Cập nhật: 2026-09-30 — nhánh `claude/keen-dirac-iwgfz9` (= `main`) — commit `8a68879`_
+_Cập nhật: 2026-09-30 tối — `/kickoff` trên máy chủ dự án (`D:\Clau Cowork\SOS VÙNG LŨ`, nhánh `main` @ `60e1519`)_
+
+> **Kickoff 30/09 tối đã chốt hướng mới — đọc `QUY-TRINH.md` trước.** Viết lại theo khuôn Greencie (Next.js + Prisma +
+> Postgres), chạy trên VPS ACA trong Docker riêng; chia lại G0–G10 (G3 diễn tập → G4 viết lại + chống phá → G5 lên VPS +
+> sao lưu). Mục "Bước tiếp theo" cuối tệp đã thay theo hướng này. Còn treo: bộ kiểm phân quyền (bắt buộc, hỏi lại ở G4),
+> môi trường thử riêng, kho GitHub công khai hay riêng tư.
 
 ## Trạng thái hiện tại
 Webapp PWA SOS vùng lũ đã **deploy lên GitHub Pages** (`https://dungnguyen302007.github.io/Sosvunglu/`), nối Supabase thật (project `sosvunglu`, đã chạy `supabase/schema.sql`). Có đủ 3 vai trò (người dân, cứu hộ, chỉ huy), tự giao SOS cho đội gần nhất, bản đồ có lớp Bản đồ/OSM/Vệ tinh. **Đang dở: nền bản đồ MapTiler báo "Invalid key"** và chưa xác nhận web đã dùng Supabase thật hay còn ở chế độ demo.
@@ -42,11 +47,11 @@ Webapp PWA SOS vùng lũ đã **deploy lên GitHub Pages** (`https://dungnguyen3
 - Không commit khóa API vào repo (bị hệ thống chặn, giữ nguyên).
 
 ## Bước tiếp theo (theo thứ tự ưu tiên)
-1. Hỏi người dùng kết quả bản đồ sau deploy (còn Invalid key không, khung "Bản chạy thử" còn không). Sửa theo mục "Còn dở".
-2. Cấp quyền chỉ huy, rồi thử toàn luồng với Supabase thật trên 2–3 tài khoản (tạo đội, cấp quyền cứu hộ, bắt đầu ca, gửi SOS, nhận/từ chối, hoàn thành).
-3. Nếu đường nhà vẫn thiếu: cân nhắc Vietmap (dữ liệu Việt Nam) hoặc Google Maps API (cần thẻ); tạm thời nút "Chỉ đường" mở Google Maps.
-4. GĐ2 còn lại: Web Push (iOS chỉ thông báo khi mở app), báo cáo hiện trường kèm ảnh, radar mưa (RainViewer), icon PNG 192/512 cho PWA.
-5. GĐ3: tổng đài SMS hai chiều, Meshtastic/LoRa, chuyển lên VPS.
+_(Thay 30/09 tối theo `QUY-TRINH.md` mục A.)_
+1. **G3 — diễn tập bằng bản hiện tại:** chạy migration 002, cấp quyền chỉ huy `0702760399`, xác nhận hết khung "Bản chạy thử" (Supabase thật), rồi 2–3 điện thoại ngoài trời đi trọn luồng (tạo đội, cấp quyền cứu hộ, bật ca, SOS, nhận/từ chối, cứu xong). Ghi lại sai số GPS và SMS dự phòng — bài học đưa vào bản viết lại.
+2. **G4 — viết lại khung Greencie** + chống phá (giới hạn SOS khách, khoá/cờ báo giả, cứu hộ chỉ thấy SOS được giao/gần mình, ô đồng ý dữ liệu sức khoẻ). Hỏi lại chủ dự án về bộ kiểm phân quyền trước khi bắt đầu.
+3. **G5 — lên VPS ACA, Docker riêng** + sao lưu đêm + bảng tổng quan (đăng bảng tin CRM-CẢNH) + thử chịu tải.
+4. G6–G10 theo `QUY-TRINH.md`. Chuyện bản đồ MapTiler/Google (mục "Còn dở") xử lý khi làm giao diện bản mới.
 
 ## Kiểm tra lúc bàn giao
 - Build: `npm run build` OK (`✓ built`)
