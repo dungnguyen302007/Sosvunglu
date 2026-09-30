@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getBattery, getPosition, type Position } from '../lib/device'
+import { getBattery, getPosition, POOR_ACCURACY_M, type Position } from '../lib/device'
 import type { LatLng } from '../lib/geo'
 import type { NewSos } from '../types'
 import { Sheet } from './common'
@@ -27,7 +27,8 @@ export function SosTrigger({ peopleCount, onReady, disabled }: { peopleCount: nu
     setBusy(false)
     setBattery(bat)
     if (pos) {
-      if (pos.stale) setStaleNote('Không bắt được GPS lúc này — đã gửi vị trí gần nhất máy ghi nhận.')
+      if (pos.stale) setStaleNote('Không bắt được GPS lúc này — đã gửi vị trí gần nhất máy ghi nhận. Sau khi gửi, hãy kiểm tra và chỉnh lại vị trí.')
+      else if ((pos.accuracy ?? 0) > POOR_ACCURACY_M) setStaleNote(`Vị trí có thể lệch khoảng ${pos.accuracy} m. Sau khi gửi, hãy kiểm tra và chỉnh lại vị trí trên bản đồ.`)
       finish(pos, bat)
     } else {
       setPicking(true)

@@ -1,7 +1,7 @@
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useMemo, type ReactNode } from 'react'
-import { CircleMarker, LayersControl, MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
+import { Fragment, useMemo, type ReactNode } from 'react'
+import { Circle, CircleMarker, LayersControl, MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { useEffect } from 'react'
 import type { LatLng } from '../lib/geo'
 import { PRIORITY_COLOR, priorityLevel, priorityScore } from '../lib/priority'
@@ -121,9 +121,14 @@ export function SosMap({ sos, locations = [], me, renderSosPopup, renderLocation
         const score = priorityScore(s)
         const level = priorityLevel(score)
         return (
-          <Marker key={s.id} position={[s.lat, s.lng]} icon={sosIcon(PRIORITY_COLOR[level], s.people_count, !!s.assigned_team_id, level === 'critical')} zIndexOffset={score}>
+          <Fragment key={s.id}>
+          {s.accuracy != null && s.accuracy >= 50 && s.accuracy <= 3000 && (
+            <Circle center={[s.lat, s.lng]} radius={s.accuracy} pathOptions={{ color: PRIORITY_COLOR[level], weight: 1, fillOpacity: 0.12 }} />
+          )}
+          <Marker position={[s.lat, s.lng]} icon={sosIcon(PRIORITY_COLOR[level], s.people_count, !!s.assigned_team_id, level === 'critical')} zIndexOffset={score}>
             {renderSosPopup && <Popup minWidth={240} maxWidth={290} autoPanPadding={[24, 80]}>{renderSosPopup(s)}</Popup>}
           </Marker>
+          </Fragment>
         )
       })}
       {locations

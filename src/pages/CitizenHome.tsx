@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { backend } from '../lib/backend'
-import { getBattery, getPosition } from '../lib/device'
+import { getBattery, getPosition, POOR_ACCURACY_M } from '../lib/device'
+import type { LatLng } from '../lib/geo'
 import { useLive, useSosQueue } from '../lib/hooks'
 import { STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/labels'
 import type { CitizenSosPatch, Profile, Sos, Vulnerable, WaterLevel } from '../types'
 import { CallButton, ErrorLine, Header, PendingCard, Sheet } from '../components/common'
+import { LocationPicker } from '../components/SosMap'
 import { SosTrigger } from '../components/SosTrigger'
 import { Stepper } from './AuthPage'
 import { PrepGuide } from './PrepGuide'
@@ -116,6 +118,9 @@ const WATER_KEYS = Object.keys(WATER_LABEL) as WaterLevel[]
 function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | null; onChanged: (s: Sos | null) => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fixing, setFixing] = useState(false)
+  const [picked, setPicked] = useState<LatLng | null>(null)
+  const poor = sos.accuracy == null || sos.accuracy > POOR_ACCURACY_M
 
   const patch = async (p: CitizenSosPatch) => {
     setBusy(true)
@@ -135,6 +140,7 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
     const [pos, battery] = await Promise.all([getPosition(), getBattery()])
     setBusy(false)
     if (pos) await patch({ lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, battery })
+    else setError('Không lấy được GPS. Hãy chọn vị trí trên bản đồ.')
   }
 
   return (
@@ -169,9 +175,31 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
           <span>Số người:</span>
           <Stepper value={sos.people_count} onChange={(v) => patch({ people_count: v })} />
         </div>
+        <p className={`small${poor ? ' error' : ' muted'}`}>
+          📍 Vị trí đã gửi: {sos.accuracy != null ? `sai số khoảng ${Math.round(sos.accuracy)} m` : 'chọn tay trên bản đồ / chưa rõ độ chính xác'}
+          {poor && sos.accuracy != null ? ' — có thể lệch, hãy cập nhật lại hoặc chỉnh tay.' : ''}
+        </p>
         <button className="btn btn-outline btn-block" disabled={busy} onClick={refreshLocation}>
-          📍 Cập nhật vị trí của tôi
+          📍 Cập nhật vị trí của tôi (GPS)
         </button>
+        <button className="btn btn-outline btn-block" disabled={busy} onClick={() => { setPicked({ lat: sos.lat, lng: sos.lng }); setFixing(true) }}>
+          🗺️ Chỉnh vị trí trên bản đồ
+        </button>
+        <Sheet open={fixing} onClose={() => setFixing(false)} title="Chạm vào chỗ bạn đang đứng">
+          <p className="muted small">Phóng to, chạm đúng vị trí nhà bạn (đổi sang Vệ tinh ở góc phải trên nếu cần), rồi bấm Lưu.</p>
+          <LocationPicker value={picked} onPick={setPicked} />
+          <button
+            className="btn btn-danger btn-block"
+            disabled={!picked || busy}
+            onClick={async () => {
+              if (!picked) return
+              await patch({ lat: picked.lat, lng: picked.lng, accuracy: null })
+              setFixing(false)
+            }}
+          >
+            Lưu vị trí này
+          </button>
+        </Sheet>
         <ErrorLine error={error} />
       </div>
 
