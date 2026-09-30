@@ -1,0 +1,12 @@
+{
+  "name": "SOS vùng lũ",
+  "short_name": "SOS lũ",
+  "description": "Một nút bấm — đội cứu hộ biết bạn ở đâu.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "lang": "vi",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

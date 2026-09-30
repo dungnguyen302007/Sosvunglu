@@ -1,0 +1,15 @@
+# Máy trống (VPS khách, chưa có proxy): Caddy giữ cổng 80/443 và tự xin SSL cho TEN_MIEN.
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: sos-vung-lu-caddy
+    restart: unless-stopped
+    ports: ['80:80', '443:443']
+    command: ['caddy', 'reverse-proxy', '--from', '${TEN_MIEN}', '--to', 'sos-vung-lu-app:3000']
+    volumes:
+      - caddy_data:/data
+    networks: [sos_net]
+    mem_limit: 128m
+volumes:
+  caddy_data:
+    name: sos-vung-lu-caddy-data

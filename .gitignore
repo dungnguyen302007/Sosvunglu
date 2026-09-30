@@ -33,3 +33,6 @@ dist-ssr
 *.tsbuildinfo
 CLAUDE.local.md
 .bang-tin-da-xu-ly
+sao-luu/
+next-env.d.ts
+.next/

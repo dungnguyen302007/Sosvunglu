@@ -1,0 +1,9 @@
+# Máy đã có nginx-proxy-manager (VPS ACA): app đứng thêm ở mạng npm_default để NPM trỏ tên miền vào
+# http://sos-vung-lu-app:3000. Không mở cổng nào ra máy chủ.
+services:
+  app:
+    networks: [sos_net, npm_net]
+networks:
+  npm_net:
+    name: ${MANG_PROXY:-npm_default}
+    external: true

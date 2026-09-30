@@ -1,0 +1,108 @@
+# Bộ Docker RIÊNG của SOS vùng lũ — tự đủ, không dùng chung CSDL/mạng/volume với hệ thống nào.
+# Bê sang VPS khác: chép thư mục + .env (+ bản dump CSDL), chọn MỘT tệp phụ trong COMPOSE_FILE (.env):
+#   - docker-compose.npm.yml   : máy đã có nginx-proxy-manager giữ cổng 80/443 (VPS ACA hiện nay)
+#   - docker-compose.caddy.yml : máy trống — Caddy tự giữ 80/443 và tự xin SSL
+#
+# Lệnh (chạy trong thư mục này):
+#   docker compose build                               dựng ảnh
+#   docker compose run --rm tools                      cập nhật bảng (prisma migrate deploy)
+#   docker compose up -d                               chạy / cập nhật
+#   docker compose logs -f app                         xem nhật ký
+#
+# ⚠️ Tên container đầy đủ "sos-vung-lu-postgres" trong DATABASE_URL — trên máy dùng chung có
+# nhiều container Postgres khác; viết tắt "postgres" là nối nhầm CSDL người khác (bài học An Gia).
+# Giới hạn RAM/CPU (mem_limit/cpus): lũ về tải vọt lên cũng không kéo sập hệ thống khác trên máy.
+
+name: sos-vung-lu
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sos-vung-lu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      MAT_KHAU_CSDL_APP: ${MAT_KHAU_CSDL_APP}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/khoi-tao.sh:/docker-entrypoint-initdb.d/khoi-tao.sh:ro
+    networks: [sos_net]
+    mem_limit: 768m
+    cpus: 1.5
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    image: sos-vung-lu-app:latest
+    container_name: sos-vung-lu-app
+    restart: unless-stopped
+    environment:
+      # Tài khoản QUYỀN THẤP sos_app (docker/postgres/khoi-tao.sh), không phải tài khoản chủ.
+      DATABASE_URL: postgresql://sos_app:${MAT_KHAU_CSDL_APP}@sos-vung-lu-postgres:5432/${POSTGRES_DB}
+      AUTH_SECRET: ${AUTH_SECRET}
+      KHOA_TAC_VU: ${KHOA_TAC_VU}
+      SO_HOTLINE: ${SO_HOTLINE:-112}
+      SO_SMS_SOS: ${SO_SMS_SOS:-}
+      BAN_DO_URL: ${BAN_DO_URL:-}
+      BAN_DO_NGUON: ${BAN_DO_NGUON:-}
+      TZ: Asia/Ho_Chi_Minh
+    networks: [sos_net]
+    mem_limit: 768m
+    cpus: 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  cron:
+    image: postgres:16-alpine
+    container_name: sos-vung-lu-cron
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '/chay.sh']
+    environment:
+      KHOA_TAC_VU: ${KHOA_TAC_VU}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - ./docker/cron/chay.sh:/chay.sh:ro
+      - ./docker/cron/sao-luu-csdl.sh:/sao-luu-csdl.sh:ro
+      # ⚠️ Bản dump có SĐT + vị trí nhà + hồ sơ sức khoẻ dạng rõ → thư mục trên máy phải 700.
+      - ./sao-luu:/sao-luu
+    networks: [sos_net]
+    mem_limit: 256m
+    depends_on: [app]
+
+  # Chạy một lần rồi thoát: cập nhật cấu trúc bảng. KHÔNG seed gì — tài khoản chỉ huy đầu tiên
+  # cấp bằng scripts/cap-quyen.ts sau khi người đó tự đăng ký trong app.
+  tools:
+    build:
+      context: .
+      target: builder
+    image: sos-vung-lu-tools:latest
+    container_name: sos-vung-lu-tools
+    restart: 'no'
+    profiles: [tools]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@sos-vung-lu-postgres:5432/${POSTGRES_DB}
+      TZ: Asia/Ho_Chi_Minh
+    networks: [sos_net]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+
+networks:
+  sos_net:
+    name: sos-vung-lu-net
+
+volumes:
+  postgres_data:
+    name: sos-vung-lu-postgres-data

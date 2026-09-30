@@ -1,12 +1,10 @@
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { createLayerComponent, type LayerProps } from '@react-leaflet/core'
-import GoogleMutant from 'leaflet.gridlayer.googlemutant/src/Leaflet.GoogleMutant.mjs'
-import { Component, Fragment, useMemo, type ReactNode } from 'react'
+import { Fragment, useMemo, type ReactNode } from 'react'
 import { Circle, CircleMarker, LayersControl, MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { useEffect } from 'react'
+import { cauHinh } from '../lib/config'
 import type { LatLng } from '../lib/geo'
-import { GOOGLE_FAILED_EVENT, useGoogleStatus } from '../lib/googleMaps'
 import { PRIORITY_COLOR, priorityLevel, priorityScore } from '../lib/priority'
 import type { Profile, RescuerLocation, Sos } from '../types'
 
@@ -17,78 +15,42 @@ const DEFAULT_CENTER: LatLng = { lat: 16.4637, lng: 107.5909 } // Huế
  *  - Bản đồ: Esri World Street Map (sáng, sạch, gần giống Google Maps)
  *  - OpenStreetMap: dự phòng nếu nền trên lỗi
  *  - Vệ tinh: Esri World Imagery
- * Có khóa riêng (MapTiler, Stadia...) thì đặt VITE_MAP_TILE_URL để thay nền đầu tiên.
+ * Có khóa riêng (MapTiler, Vietmap...) thì đặt BAN_DO_URL (+ BAN_DO_NGUON) trong .env để thay nền đầu tiên.
+ * (Bản Vite có lớp Google Maps tuỳ chọn — bỏ ở bản này vì cần thẻ thanh toán, chưa dùng.)
  */
-const CUSTOM_TILE_URL = import.meta.env.VITE_MAP_TILE_URL
-const CUSTOM_ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION || '&copy; OpenStreetMap contributors'
-
-const TILES = {
-  street: {
-    url: CUSTOM_TILE_URL || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: CUSTOM_TILE_URL ? CUSTOM_ATTRIBUTION : 'Tiles &copy; Esri',
-    maxZoom: 19,
-  },
-  osm: {
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri',
-    maxZoom: 19,
-  },
-}
-
-type GoogleType = 'roadmap' | 'hybrid'
-
-const GoogleLayer = createLayerComponent<GoogleMutant, LayerProps & { type: GoogleType }>((props, ctx) => ({
-  instance: new GoogleMutant({ type: props.type }),
-  context: ctx,
-}))
-
-/** Nếu lớp Google lỗi khi dựng thì báo để app quay về nền miễn phí, không làm sập màn hình. */
-class GoogleGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
-  static getDerivedStateFromError() {
-    return { failed: true }
-  }
-  componentDidCatch() {
-    window.dispatchEvent(new Event(GOOGLE_FAILED_EVENT))
-  }
-  render() {
-    return this.state.failed ? null : this.props.children
+function tiles() {
+  const rieng = cauHinh.banDoUrl
+  return {
+    street: {
+      url: rieng || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      attribution: rieng ? cauHinh.banDoNguon : 'Tiles &copy; Esri',
+      maxZoom: 19,
+    },
+    osm: {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    },
+    satellite: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri',
+      maxZoom: 19,
+    },
   }
 }
 
 function BaseLayers() {
-  const google = useGoogleStatus()
-  if (google === 'loading') return null // chờ Google tải xong để chọn nền mặc định đúng
-  const g = google === 'ready'
+  const t = useMemo(tiles, [])
   return (
-    <LayersControl position="topright" key={google}>
-      {g && (
-        <LayersControl.BaseLayer checked name="Google Maps">
-          <GoogleGuard>
-            <GoogleLayer type="roadmap" />
-          </GoogleGuard>
-        </LayersControl.BaseLayer>
-      )}
-      <LayersControl.BaseLayer checked={!g} name="Bản đồ">
-        <TileLayer {...TILES.street} />
+    <LayersControl position="topright">
+      <LayersControl.BaseLayer checked name="Bản đồ">
+        <TileLayer {...t.street} />
       </LayersControl.BaseLayer>
       <LayersControl.BaseLayer name="OpenStreetMap">
-        <TileLayer {...TILES.osm} />
+        <TileLayer {...t.osm} />
       </LayersControl.BaseLayer>
-      {g && (
-        <LayersControl.BaseLayer name="Google Vệ tinh">
-          <GoogleGuard>
-            <GoogleLayer type="hybrid" />
-          </GoogleGuard>
-        </LayersControl.BaseLayer>
-      )}
       <LayersControl.BaseLayer name="Vệ tinh">
-        <TileLayer {...TILES.satellite} />
+        <TileLayer {...t.satellite} />
       </LayersControl.BaseLayer>
     </LayersControl>
   )

@@ -1,0 +1,169 @@
+// Mô hình dữ liệu SOS vùng lũ (G4 — viết lại từ bản Supabase, xem docs/schema-supabase-cu.sql).
+//
+// Tên bảng/trường tiếng Việt không dấu như khuôn CRM. Giao diện (chép từ bản Vite) vẫn dùng
+// kiểu cũ (Profile, Sos, Team… trong src/types.ts) — chuyển đổi ở src/lib/may-chu/chuyen-doi.ts,
+// và CHÍNH lớp chuyển đổi đó là nơi cắt bớt trường theo vai (cứu hộ không thấy SĐT dân khi
+// SOS chưa giao cho đội mình…). Đừng trả thẳng bản ghi Prisma ra API.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VaiTro {
+  DAN
+  CUU_HO
+  CHI_HUY
+}
+
+enum NhomDeTonThuong {
+  NGUOI_GIA
+  TRE_NHO
+  KHUYET_TAT
+  BENH_NEN
+  MANG_THAI
+}
+
+enum TrangThaiSos {
+  CHO_CUU
+  DA_GIAO
+  DANG_TOI
+  DA_TOI
+  DA_AN_TOAN
+  KHONG_TIEP_CAN
+  DA_HUY
+}
+
+enum MucNuoc {
+  MAT_CA
+  DAU_GOI
+  NGUC
+  MAI_NHA
+}
+
+enum TrangThaiDoi {
+  SAN_SANG
+  DANG_LAM
+  NGHI
+  HET_NHIEN_LIEU
+}
+
+model NguoiDung {
+  id           String   @id @default(uuid())
+  hoTen        String
+  /// SĐT đã chuẩn hoá (0xxxxxxxxx) — dùng để đăng nhập
+  sdt          String   @unique
+  matKhauBam   String
+  vaiTro       VaiTro   @default(DAN)
+  doiId        String?
+  doi          Doi?     @relation(fields: [doiId], references: [id])
+  tinh         String?
+  xa           String?
+  thon         String?
+  diaChi       String?
+  soNguoi      Int      @default(1)
+  /// ⚠️ Dữ liệu sức khoẻ = dữ liệu cá nhân nhạy cảm. Chỉ chỉ huy + đội ĐÃ được giao SOS của hộ này thấy.
+  deTonThuong  NhomDeTonThuong[]
+  sdtNguoiThan String?
+  ghiChu       String?
+  nhaLat       Float?
+  nhaLng       Float?
+  /// Lúc người dân tick "đồng ý cho đội cứu hộ dùng thông tin" khi đăng ký
+  dongYLuc     DateTime?
+  /// Chỉ huy khoá tài khoản phá hoại / báo giả
+  biKhoa       Boolean  @default(false)
+  /// Tăng mỗi lần đổi vai, khoá, đổi mật khẩu → mọi phiên cũ hết hiệu lực
+  phienBan     Int      @default(1)
+  taoLuc       DateTime @default(now())
+  capNhatLuc   DateTime @updatedAt
+
+  sosDaGui   YeuCauSos[]  @relation("NguoiGui")
+  viTri      ViTriCuuHo?
+  nhatKy     NhatKySos[]
+
+  @@index([vaiTro])
+}
+
+model Doi {
+  id         String       @id @default(uuid())
+  ten        String
+  phuongTien String       @default("xuồng")
+  sucCho     Int          @default(6)
+  trangThai  TrangThaiDoi @default(SAN_SANG)
+  taoLuc     DateTime     @default(now())
+  capNhatLuc DateTime     @updatedAt
+
+  thanhVien NguoiDung[]
+  sos       YeuCauSos[]
+  viTri     ViTriCuuHo[]
+}
+
+model YeuCauSos {
+  id          String       @id @default(uuid())
+  nguoiGuiId  String?
+  nguoiGui    NguoiDung?   @relation("NguoiGui", fields: [nguoiGuiId], references: [id])
+  /// SOS khẩn không cần tài khoản
+  tenKhach    String?
+  sdtKhach    String?
+  lat         Float
+  lng         Float
+  /// Sai số GPS (m); null = chọn tay trên bản đồ
+  saiSo       Float?
+  pin         Int?
+  soNguoi     Int          @default(1)
+  mucNuoc     MucNuoc?
+  biThuong    Boolean      @default(false)
+  ghiChu      String?
+  trangThai   TrangThaiSos @default(CHO_CUU)
+  doiId       String?
+  doi         Doi?         @relation(fields: [doiId], references: [id])
+  /// Lúc giao cho đội hiện tại (đội phải xác nhận trong 2 phút)
+  giaoLuc     DateTime?
+  /// Lúc đội xác nhận nhận việc
+  nhanLuc     DateTime?
+  /// Các đội đã từng được giao (không giao lại đội đã từ chối / hết giờ)
+  doiDaThu    String[]     @default([])
+  /// Chỉ huy gắn cờ báo giả
+  baoGia      Boolean      @default(false)
+  /// IP người gửi (chỉ để chống spam SOS khách; không hiện ra giao diện)
+  ipGui       String?
+  taoLuc      DateTime     @default(now())
+  capNhatLuc  DateTime     @updatedAt
+
+  nhatKy NhatKySos[]
+
+  @@index([trangThai])
+  @@index([doiId])
+  @@index([nguoiGuiId])
+  @@index([sdtKhach])
+}
+
+model ViTriCuuHo {
+  nguoiDungId String    @id
+  nguoiDung   NguoiDung @relation(fields: [nguoiDungId], references: [id])
+  doiId       String?
+  doi         Doi?      @relation(fields: [doiId], references: [id])
+  lat         Float
+  lng         Float
+  trongCa     Boolean   @default(false)
+  capNhatLuc  DateTime  @default(now())
+}
+
+/// Sổ ghi ai làm gì với SOS nào (không sửa, không xoá)
+model NhatKySos {
+  id        String     @id @default(uuid())
+  sosId     String
+  sos       YeuCauSos  @relation(fields: [sosId], references: [id])
+  nguoiLamId String?
+  nguoiLam  NguoiDung? @relation(fields: [nguoiLamId], references: [id])
+  hanhDong  String
+  chiTiet   Json?
+  luc       DateTime   @default(now())
+
+  @@index([sosId])
+}

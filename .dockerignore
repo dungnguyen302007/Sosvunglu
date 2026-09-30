@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+sao-luu
+docs
+*.md
+!README.md
+CLAUDE.local.md
+.claude

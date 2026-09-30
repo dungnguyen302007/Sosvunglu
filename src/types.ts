@@ -93,6 +93,8 @@ export interface SignUpInput {
   note: string
   home_lat: number | null
   home_lng: number | null
+  /** Đồng ý cho đội cứu hộ / chỉ huy dùng thông tin (có dữ liệu sức khoẻ) — bắt buộc khi đăng ký */
+  dong_y: boolean
 }
 
 export interface NewSos {

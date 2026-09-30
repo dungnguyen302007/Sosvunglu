@@ -1,4 +1,5 @@
 import type { GuestSosInput, NewSos } from '../types'
+import { cauHinh } from './config'
 import { storage } from './storage'
 
 /**
@@ -61,6 +62,6 @@ export function smsBody(p: { name: string; phone: string; lat: number; lng: numb
   return `SOS ${name} ${p.phone} ${p.lat.toFixed(5)},${p.lng.toFixed(5)} ${p.people} nguoi https://maps.google.com/?q=${p.lat.toFixed(5)},${p.lng.toFixed(5)}`
 }
 
-export function smsLink(body: string, number = import.meta.env.VITE_SOS_SMS_NUMBER ?? ''): string {
+export function smsLink(body: string, number = cauHinh.soSms): string {
   return `sms:${number}?body=${encodeURIComponent(body)}`
 }

@@ -20,7 +20,7 @@ export interface GuestStatus {
 
 /** Lớp dữ liệu chung: bản Supabase (thật) và bản demo (lưu trên máy) cùng giao diện. */
 export interface Backend {
-  mode: 'supabase' | 'demo'
+  mode: 'may-chu'
 
   getProfile(): Promise<Profile | null>
   onAuthChange(cb: () => void): () => void
@@ -42,11 +42,15 @@ export interface Backend {
   declineSos(id: string): Promise<void>
   /** Quét điều phối: hết 2 phút chưa xác nhận → đổi đội; SOS đang chờ → thử giao. */
   runDispatch(): Promise<void>
+  /** Chỉ huy: gắn cờ báo giả (huỷ SOS), có thể khoá luôn tài khoản người gửi. */
+  reportFake(id: string, lockSender: boolean): Promise<void>
 
   listTeams(): Promise<Team[]>
   createTeam(team: Omit<Team, 'id'>): Promise<void>
   updateTeam(id: string, patch: Partial<Omit<Team, 'id'>>): Promise<void>
   setUserRole(phone: string, role: Role, teamId: string | null): Promise<void>
+  /** Chỉ huy: khoá / mở khoá tài khoản phá hoại. */
+  lockUser(phone: string, lock: boolean): Promise<void>
 
   /** Chỉ huy: tất cả tài khoản cứu hộ / chỉ huy (kể cả chưa bật ca, chưa có vị trí). */
   listStaff(): Promise<Profile[]>

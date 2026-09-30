@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useNow, useOnline } from '../lib/hooks'
 import { smsBody, smsLink, type PendingSos } from '../lib/queue'
 import { timeAgo } from '../lib/labels'
-import { HOTLINE } from '../lib/config'
+import { cauHinh } from '../lib/config'
 
 export function Header({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
   const online = useOnline()
@@ -51,8 +51,8 @@ export function Tabs<T extends string>({ value, onChange, items }: { value: T; o
 
 export function CallButton({ className = 'btn btn-outline' }: { className?: string }) {
   return (
-    <a className={className} href={`tel:${HOTLINE}`}>
-      📞 Gọi {HOTLINE}
+    <a className={className} href={`tel:${cauHinh.hotline}`}>
+      📞 Gọi {cauHinh.hotline}
     </a>
   )
 }
