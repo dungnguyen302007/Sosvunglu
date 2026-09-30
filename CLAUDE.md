@@ -35,6 +35,7 @@ Kiểm tra SQL: container có Postgres 16 (`service postgresql start`); cần st
 - Trả lời, viết tài liệu, chữ trên giao diện bằng tiếng Việt.
 - Quyền phải chặn ở RLS/trigger trong `schema.sql`, không chỉ ở giao diện. Sửa quyền thì sửa bản demo cho khớp.
 - Thêm hàm vào `Backend` thì cài cho cả `supabase.ts` và `demo.ts`.
+- Người dùng đã cho phép **luôn cập nhật `main`** sau mỗi lần sửa xong (chỉ fast-forward: `git push origin HEAD:main`, không force). Web GitHub Pages tự deploy từ `main`.
 - Commit message ngắn gọn, dạng `loại: nội dung` (vd `feat: thêm nút SOS`, `fix: ...`, `docs: ...`).
 
 Đầu phiên chạy `/kickoff`. Cuối phiên chạy /handoff để cập nhật HANDOFF.md.
