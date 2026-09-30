@@ -20,6 +20,8 @@ Webapp (PWA) SOS vùng lũ: người dân nhấn giữ nút SOS gửi hồ sơ +
 
 ## Lệnh chạy
 
+Hướng dẫn cài và chạy trên máy người dùng (Claude Code local): `docs/HUONG_DAN_CHAY_MAY.md`. Chạy local thì để trống `VITE_MAP_TILE_URL`/`VITE_GOOGLE_MAPS_KEY` (khóa chỉ cho tên miền github.io).
+
 ```bash
 npm install
 npm run dev      # dev server

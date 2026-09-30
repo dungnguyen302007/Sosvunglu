@@ -10,6 +10,8 @@ Kế hoạch đầy đủ: [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Chạy thử trên máy
 
+Hướng dẫn chi tiết từng bước (cài Git, Node, Claude Code): [`docs/HUONG_DAN_CHAY_MAY.md`](docs/HUONG_DAN_CHAY_MAY.md).
+
 ```bash
 npm install
 npm run dev        # mở http://localhost:5173
