@@ -164,6 +164,21 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       unwrap(await sb.rpc('set_user_role', { p_phone: normalizePhone(phone), p_role: role, p_team: teamId }))
     },
 
+    async listStaff() {
+      const res = await sb.from('profiles').select('*').in('role', ['rescuer', 'commander']).order('full_name')
+      return (unwrap(res) ?? []) as Profile[]
+    },
+
+    async listHouseholds() {
+      const res = await sb
+        .from('profiles')
+        .select('*')
+        .eq('role', 'citizen')
+        .not('home_lat', 'is', null)
+        .limit(5000)
+      return (unwrap(res) ?? []) as Profile[]
+    },
+
     async upsertMyLocation(lat, lng, onDuty) {
       const id = await uid()
       const profile = await this.getProfile()

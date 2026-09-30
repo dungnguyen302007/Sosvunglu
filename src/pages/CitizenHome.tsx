@@ -7,6 +7,7 @@ import { STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/lab
 import type { CitizenSosPatch, Profile, Sos, Vulnerable, WaterLevel } from '../types'
 import { CallButton, ErrorLine, Header, PendingCard, Sheet } from '../components/common'
 import { LocationPicker } from '../components/SosMap'
+import { HomeLocation } from '../components/HomeLocation'
 import { SosTrigger } from '../components/SosTrigger'
 import { Stepper } from './AuthPage'
 import { PrepGuide } from './PrepGuide'
@@ -228,6 +229,8 @@ function ProfileForm({ profile, onDone }: { profile: Profile; onDone: () => void
     relative_phone: profile.relative_phone ?? '',
     note: profile.note ?? '',
     address_detail: profile.address_detail ?? '',
+    home_lat: profile.home_lat,
+    home_lng: profile.home_lng,
   })
   const [error, setError] = useState<string | null>(null)
   const save = async () => {
@@ -251,6 +254,10 @@ function ProfileForm({ profile, onDone }: { profile: Profile; onDone: () => void
         Số nhà, đường
         <input value={f.address_detail} onChange={(e) => setF({ ...f, address_detail: e.target.value })} />
       </label>
+      <HomeLocation
+        value={f.home_lat != null && f.home_lng != null ? { lat: f.home_lat, lng: f.home_lng } : null}
+        onChange={(p) => setF({ ...f, home_lat: p?.lat ?? null, home_lng: p?.lng ?? null })}
+      />
       <label>
         Số người trong nhà
         <Stepper value={f.household_size} onChange={(v) => setF({ ...f, household_size: v })} />

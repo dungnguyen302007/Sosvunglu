@@ -42,6 +42,8 @@ function baseProfile(p: Partial<DemoUser> & Pick<DemoUser, 'id' | 'full_name' | 
     vulnerable: [],
     relative_phone: null,
     note: null,
+    home_lat: null,
+    home_lng: null,
     password: '123456',
     ...p,
   }
@@ -61,6 +63,8 @@ export function seedDb(): DemoDb {
     vulnerable: ['elderly', 'child'],
     relative_phone: '0911111111',
     note: 'Nhà 1 tầng, không có gác',
+    home_lat: 16.4629,
+    home_lng: 107.5931,
   })
   return {
     users: [
@@ -68,6 +72,10 @@ export function seedDb(): DemoDb {
       baseProfile({ id: 'u-rescuer', full_name: 'Lê Văn Cứu', phone: '0900000002', role: 'rescuer', team_id: team1.id }),
       baseProfile({ id: 'u-rescuer2', full_name: 'Phạm Văn Hộ', phone: '0900000004', role: 'rescuer', team_id: team2.id }),
       citizen,
+      baseProfile({ id: 'u-h1', full_name: 'Trần Thị Mai', phone: '0900000011', role: 'citizen', household_size: 3, vulnerable: ['elderly'], home_lat: 16.4701, home_lng: 107.5842 }),
+      baseProfile({ id: 'u-h2', full_name: 'Nguyễn Văn Bình', phone: '0900000012', role: 'citizen', household_size: 5, vulnerable: ['child', 'pregnant'], home_lat: 16.4585, home_lng: 107.5968 }),
+      baseProfile({ id: 'u-h3', full_name: 'Lê Thị Hạnh', phone: '0900000013', role: 'citizen', household_size: 2, home_lat: 16.4532, home_lng: 107.6055 }),
+      baseProfile({ id: 'u-rescuer3', full_name: 'Đặng Văn Tâm', phone: '0900000005', role: 'rescuer', team_id: 'team-1' }),
     ],
     teams: [team1, team2],
     sos: [
@@ -378,6 +386,18 @@ export function createDemoBackend(): Backend {
       u.role = role
       u.team_id = teamId
       save(db)
+    },
+
+    async listStaff() {
+      const db = load()
+      if (requireMe(db).role !== 'commander') throw new Error('Chỉ chỉ huy được xem')
+      return db.users.filter((u) => u.role !== 'citizen').map(strip)
+    },
+
+    async listHouseholds() {
+      const db = load()
+      if (requireMe(db).role !== 'commander') throw new Error('Chỉ chỉ huy được xem')
+      return db.users.filter((u) => u.role === 'citizen' && u.home_lat != null).map(strip)
     },
 
     async upsertMyLocation(lat, lng, onDuty) {

@@ -3,11 +3,11 @@ import { backend } from '../lib/backend'
 import { formatKm, isValidPhone, nearestTeams } from '../lib/geo'
 import { useDispatchLoop, useLive, useNow } from '../lib/hooks'
 import { ROLE_LABEL, STATUS_LABEL, TEAM_STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/labels'
-import { priorityScore, sortByPriority } from '../lib/priority'
+import { PRIORITY_COLOR, priorityScore, sortByPriority } from '../lib/priority'
 import { OPEN_STATUSES, type Profile, type RescuerLocation, type Role, type Sos, type SosStatus, type Team } from '../types'
 import { ErrorLine, Header, Stat, Tabs } from '../components/common'
 import { SosCard } from '../components/SosCard'
-import { SosMap } from '../components/SosMap'
+import { isLive, SosMap } from '../components/SosMap'
 
 type Filter = 'todo' | 'active' | 'done' | 'all'
 const ACTIVE: SosStatus[] = ['assigned', 'on_way', 'arrived']
@@ -26,6 +26,10 @@ export function CommanderHome({ profile }: { profile: Profile }) {
   useDispatchLoop()
   const teams = useLive(() => backend.listTeams(), 30000)
   const locs = useLive(() => backend.listLocations(), 20000)
+  const staff = useLive(() => backend.listStaff(), 60000)
+  const households = useLive(() => backend.listHouseholds(), 120000)
+  const [showHouses, setShowHouses] = useState(true)
+  const [showOffline, setShowOffline] = useState(true)
   const now = useNow()
   const [error, setError] = useState<string | null>(null)
 
@@ -120,14 +124,40 @@ export function CommanderHome({ profile }: { profile: Profile }) {
         ]}
       />
       {tab === 'map' && (
-        <div className="map-full">
-          <SosMap
-            sos={open}
-            locations={locList}
-            renderSosPopup={(s) => <SosCard sos={s} teams={teamList} now={now} compact actions={assignControls(s)} />}
-            renderLocationPopup={(l) => <LocationPopup l={l} teams={teamList} now={now} />}
-          />
-        </div>
+        <>
+          <div className="map-tools">
+            <label>
+              <input type="checkbox" checked={showHouses} onChange={(e) => setShowHouses(e.target.checked)} />
+              🏠 Nhà dân ({households.data?.length ?? 0})
+            </label>
+            <label>
+              <input type="checkbox" checked={showOffline} onChange={(e) => setShowOffline(e.target.checked)} />
+              Cứu hộ đã tắt ca (xám)
+            </label>
+            <span>
+              <i className="legend-dot" style={{ background: PRIORITY_COLOR.critical }} />
+              nguy cấp <i className="legend-dot" style={{ background: PRIORITY_COLOR.high }} />
+              nguy hiểm <i className="legend-dot" style={{ background: PRIORITY_COLOR.normal }} />
+              cần cứu · 🚤 {locList.filter((l) => isLive(l, now)).length} cứu hộ đang trực
+            </span>
+          </div>
+          {locList.filter((l) => isLive(l, now)).length === 0 && (
+            <p className="warn-line">
+              Chưa có cứu hộ nào đang trực trên bản đồ. Cứu hộ cần đăng nhập và bấm "Bắt đầu ca trực" (cho phép định vị). Xem tab Đội.
+            </p>
+          )}
+          <div className="map-full">
+            <SosMap
+              sos={open}
+              locations={locList}
+              showOffline={showOffline}
+              households={showHouses ? (households.data ?? []) : []}
+              renderSosPopup={(s) => <SosCard sos={s} teams={teamList} now={now} compact actions={assignControls(s)} />}
+              renderLocationPopup={(l) => <LocationPopup l={l} teams={teamList} now={now} />}
+              renderHouseholdPopup={(h) => <HouseholdPopup h={h} />}
+            />
+          </div>
+        </>
       )}
       {tab === 'sos' && (
         <>
@@ -149,7 +179,33 @@ export function CommanderHome({ profile }: { profile: Profile }) {
           </div>
         </>
       )}
-      {tab === 'teams' && <TeamsPanel teams={teamList} locations={locList} sos={open} now={now} onChanged={teams.reload} />}
+      {tab === 'teams' && (
+        <TeamsPanel
+          teams={teamList}
+          staff={staff.data ?? []}
+          locations={locList}
+          sos={open}
+          now={now}
+          onChanged={() => {
+            void teams.reload()
+            void staff.reload()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function HouseholdPopup({ h }: { h: Profile }) {
+  const address = [h.address_detail, h.hamlet, h.ward, h.province].filter(Boolean).join(', ')
+  return (
+    <div>
+      <b>🏠 {h.full_name}</b>
+      <div>👥 {h.household_size} người</div>
+      {h.vulnerable.length > 0 && <div className="fact-warn">⚠️ {h.vulnerable.map((v) => VULNERABLE_LABEL[v]).join(', ')}</div>}
+      {address && <div className="muted small">{address}</div>}
+      {h.note && <div className="muted small">📝 {h.note}</div>}
+      <a href={`tel:${h.phone}`}>📞 {h.phone}</a>
     </div>
   )
 }
@@ -166,7 +222,21 @@ function LocationPopup({ l, teams, now }: { l: RescuerLocation; teams: Team[]; n
   )
 }
 
-function TeamsPanel({ teams, locations, sos, now, onChanged }: { teams: Team[]; locations: RescuerLocation[]; sos: Sos[]; now: number; onChanged: () => void }) {
+function TeamsPanel({
+  teams,
+  staff,
+  locations,
+  sos,
+  now,
+  onChanged,
+}: {
+  teams: Team[]
+  staff: Profile[]
+  locations: RescuerLocation[]
+  sos: Sos[]
+  now: number
+  onChanged: () => void
+}) {
   const [name, setName] = useState('')
   const [vehicle, setVehicle] = useState('xuồng')
   const [capacity, setCapacity] = useState(6)
@@ -202,8 +272,11 @@ function TeamsPanel({ teams, locations, sos, now, onChanged }: { teams: Team[]; 
   return (
     <div className="list">
       {teams.map((t) => {
-        const members = locations.filter((l) => l.team_id === t.id)
-        const onDuty = members.filter((l) => l.on_duty)
+        const members = staff.filter((m) => m.team_id === t.id)
+        const onDuty = members.filter((m) => {
+          const loc = locations.find((l) => l.user_id === m.id)
+          return loc && isLive(loc, now)
+        })
         const tasks = sos.filter((s) => s.assigned_team_id === t.id)
         return (
           <article key={t.id} className="card team-card">
@@ -217,11 +290,30 @@ function TeamsPanel({ teams, locations, sos, now, onChanged }: { teams: Team[]; 
               <span>🟢 {onDuty.length} người trong ca</span>
               <span>📋 {tasks.length} việc đang mở</span>
             </div>
-            {onDuty.map((l) => (
-              <div key={l.user_id} className="muted small">
-                • {l.profile?.full_name ?? 'Thành viên'} — cập nhật {timeAgo(l.updated_at, now)}
-              </div>
-            ))}
+            {members.length === 0 && (
+              <p className="warn-line">Đội chưa có thành viên. Dùng ô "Cấp quyền" bên dưới để thêm người vào đội.</p>
+            )}
+            {members.length > 0 && onDuty.length === 0 && (
+              <p className="warn-line">Chưa ai bật ca trực, nên đội chưa hiện trên bản đồ và chưa được tự giao việc.</p>
+            )}
+            {members.map((m) => {
+              const loc = locations.find((l) => l.user_id === m.id)
+              const live = loc && isLive(loc, now)
+              return (
+                <div key={m.id} className="member">
+                  <span>
+                    {live ? '🟢' : '⚪'} {m.full_name} · <a href={`tel:${m.phone}`}>{m.phone}</a>
+                  </span>
+                  <span className="muted">
+                    {live
+                      ? `đang trực · ${timeAgo(loc.updated_at, now)}`
+                      : loc
+                        ? `${loc.on_duty ? 'mất tín hiệu' : 'đã tắt ca'} · ${timeAgo(loc.updated_at, now)}`
+                        : 'chưa bật ca lần nào'}
+                  </span>
+                </div>
+              )
+            })}
             {tasks.map((s) => (
               <div key={s.id} className="small">
                 ↳ {s.profile?.full_name ?? s.guest_name ?? 'SOS'} — {STATUS_LABEL[s.status]} (ưu tiên {priorityScore(s, now)})
@@ -230,6 +322,21 @@ function TeamsPanel({ teams, locations, sos, now, onChanged }: { teams: Team[]; 
           </article>
         )
       })}
+
+      {staff.some((m) => m.role === 'rescuer' && !m.team_id) && (
+        <article className="card">
+          <b>Cứu hộ chưa có đội</b>
+          {staff
+            .filter((m) => m.role === 'rescuer' && !m.team_id)
+            .map((m) => (
+              <div key={m.id} className="member">
+                <span>{m.full_name}</span>
+                <a href={`tel:${m.phone}`}>{m.phone}</a>
+              </div>
+            ))}
+          <p className="muted small">Cấp quyền lại bên dưới và chọn đội để họ được tự giao việc.</p>
+        </article>
+      )}
 
       <form className="card form" onSubmit={createTeam}>
         <h3>➕ Tạo đội mới</h3>

@@ -8,7 +8,7 @@ import { useEffect } from 'react'
 import type { LatLng } from '../lib/geo'
 import { GOOGLE_FAILED_EVENT, useGoogleStatus } from '../lib/googleMaps'
 import { PRIORITY_COLOR, priorityLevel, priorityScore } from '../lib/priority'
-import type { RescuerLocation, Sos } from '../types'
+import type { Profile, RescuerLocation, Sos } from '../types'
 
 const DEFAULT_CENTER: LatLng = { lat: 16.4637, lng: 107.5909 } // Huế
 
@@ -101,6 +101,32 @@ const rescuerIcon = L.divIcon({
   iconAnchor: [17, 17],
 })
 
+/** Cứu hộ đã tắt ca hoặc mất tín hiệu > 15 phút: hiện xám ở vị trí cuối cùng. */
+const rescuerOffIcon = L.divIcon({
+  className: 'rescuer-icon off',
+  html: '🚤',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+})
+
+const STALE_MS = 15 * 60 * 1000
+
+export function isLive(l: RescuerLocation, now = Date.now()): boolean {
+  return l.on_duty && now - new Date(l.updated_at).getTime() <= STALE_MS
+}
+
+function houseIcon(vulnerable: boolean) {
+  return L.divIcon({
+    className: 'house-pin-wrap',
+    html: `<div class="house-pin${vulnerable ? ' vulnerable' : ''}">🏠</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
+  })
+}
+const HOUSE = houseIcon(false)
+const HOUSE_VULNERABLE = houseIcon(true)
+
 const meIcon = L.divIcon({ className: 'me-icon', html: '', iconSize: [18, 18], iconAnchor: [9, 9] })
 
 function sosIcon(color: string, people: number, assigned: boolean, critical: boolean) {
@@ -146,13 +172,36 @@ interface Props {
   me?: LatLng | null
   renderSosPopup?: (s: Sos) => ReactNode
   renderLocationPopup?: (l: RescuerLocation) => ReactNode
+  households?: Profile[]
+  renderHouseholdPopup?: (p: Profile) => ReactNode
+  /** Hiện cả cứu hộ đã tắt ca / mất tín hiệu (xám) */
+  showOffline?: boolean
   height?: string
 }
 
-export function SosMap({ sos, locations = [], me, renderSosPopup, renderLocationPopup, height = '100%' }: Props) {
+export function SosMap({
+  sos,
+  locations = [],
+  me,
+  renderSosPopup,
+  renderLocationPopup,
+  households = [],
+  renderHouseholdPopup,
+  showOffline = false,
+  height = '100%',
+}: Props) {
+  const visibleLocations = useMemo(
+    () => (showOffline ? locations : locations.filter((l) => l.on_duty)),
+    [locations, showOffline],
+  )
   const points = useMemo(
-    () => [...sos, ...locations.filter((l) => l.on_duty), ...(me ? [me] : [])],
-    [sos, locations, me],
+    () => [
+      ...sos,
+      ...visibleLocations,
+      ...households.map((h) => ({ lat: h.home_lat!, lng: h.home_lng! })),
+      ...(me ? [me] : []),
+    ],
+    [sos, visibleLocations, households, me],
   )
   return (
     <MapContainer center={DEFAULT_CENTER} zoom={13} style={{ height, width: '100%' }} className="map" zoomControl={false}>
@@ -173,13 +222,19 @@ export function SosMap({ sos, locations = [], me, renderSosPopup, renderLocation
           </Fragment>
         )
       })}
-      {locations
-        .filter((l) => l.on_duty)
-        .map((l) => (
-          <Marker key={l.user_id} position={[l.lat, l.lng]} icon={rescuerIcon} zIndexOffset={5000}>
+      {households.map((h) => (
+        <Marker key={h.id} position={[h.home_lat!, h.home_lng!]} icon={h.vulnerable.length ? HOUSE_VULNERABLE : HOUSE} zIndexOffset={-1000}>
+          {renderHouseholdPopup && <Popup>{renderHouseholdPopup(h)}</Popup>}
+        </Marker>
+      ))}
+      {visibleLocations.map((l) => {
+        const live = isLive(l)
+        return (
+          <Marker key={l.user_id} position={[l.lat, l.lng]} icon={live ? rescuerIcon : rescuerOffIcon} zIndexOffset={live ? 5000 : 3000}>
             {renderLocationPopup && <Popup>{renderLocationPopup(l)}</Popup>}
           </Marker>
-        ))}
+        )
+      })}
       {me && <Marker position={[me.lat, me.lng]} icon={meIcon} zIndexOffset={4000} />}
       {me && <LocateButton me={me} />}
     </MapContainer>

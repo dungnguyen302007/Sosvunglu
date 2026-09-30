@@ -29,6 +29,9 @@ export interface Profile {
   vulnerable: Vulnerable[]
   relative_phone: string | null
   note: string | null
+  /** Vị trí nhà (người dân tự lưu khi đăng ký / trong hồ sơ). Chỉ huy xem để nắm toàn cảnh. */
+  home_lat: number | null
+  home_lng: number | null
 }
 
 export interface Team {
@@ -88,6 +91,8 @@ export interface SignUpInput {
   vulnerable: Vulnerable[]
   relative_phone: string
   note: string
+  home_lat: number | null
+  home_lng: number | null
 }
 
 export interface NewSos {

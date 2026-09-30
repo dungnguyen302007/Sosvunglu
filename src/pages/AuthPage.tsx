@@ -7,6 +7,7 @@ import { STATUS_LABEL, VULNERABLE_LABEL } from '../lib/labels'
 import { storage } from '../lib/storage'
 import type { SignUpInput, Vulnerable } from '../types'
 import { CallButton, ErrorLine, PendingCard, Tabs } from '../components/common'
+import { HomeLocation } from '../components/HomeLocation'
 import { SosTrigger } from '../components/SosTrigger'
 
 type Tab = 'login' | 'register' | 'guest'
@@ -104,6 +105,8 @@ function RegisterForm() {
     vulnerable: [],
     relative_phone: '',
     note: '',
+    home_lat: null,
+    home_lng: null,
   })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -162,6 +165,10 @@ function RegisterForm() {
           <input value={f.address_detail} onChange={(e) => set('address_detail', e.target.value)} />
         </label>
       </div>
+      <HomeLocation
+        value={f.home_lat != null && f.home_lng != null ? { lat: f.home_lat, lng: f.home_lng } : null}
+        onChange={(p) => setF((prev) => ({ ...prev, home_lat: p?.lat ?? null, home_lng: p?.lng ?? null }))}
+      />
       <label>
         Số người trong nhà *
         <Stepper value={f.household_size} onChange={(v) => set('household_size', v)} />

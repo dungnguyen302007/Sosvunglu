@@ -48,6 +48,11 @@ export interface Backend {
   updateTeam(id: string, patch: Partial<Omit<Team, 'id'>>): Promise<void>
   setUserRole(phone: string, role: Role, teamId: string | null): Promise<void>
 
+  /** Chỉ huy: tất cả tài khoản cứu hộ / chỉ huy (kể cả chưa bật ca, chưa có vị trí). */
+  listStaff(): Promise<Profile[]>
+  /** Chỉ huy: các hộ dân đã lưu vị trí nhà. */
+  listHouseholds(): Promise<Profile[]>
+
   upsertMyLocation(lat: number, lng: number, onDuty: boolean): Promise<void>
   listLocations(): Promise<RescuerLocation[]>
 

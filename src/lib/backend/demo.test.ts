@@ -20,6 +20,8 @@ describe('backend demo', () => {
       vulnerable: ['elderly'],
       relative_phone: '',
       note: '',
+      home_lat: 16.46,
+      home_lng: 107.59,
     })
     const me = await b.getProfile()
     expect(me?.phone).toBe('0912000111')
