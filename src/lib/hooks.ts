@@ -97,6 +97,20 @@ export function useSosQueue(onSent: (r: SentResult) => void) {
   return { pending, error, submit, cancel, trySend }
 }
 
+/**
+ * Gọi run_dispatch mỗi phút (dự phòng khi server chưa bật pg_cron):
+ * đội không xác nhận trong 2 phút → chuyển đội khác.
+ */
+export function useDispatchLoop(enabled = true) {
+  useEffect(() => {
+    if (!enabled) return
+    const run = () => void backend.runDispatch().catch(() => {})
+    run()
+    const t = window.setInterval(run, 60000)
+    return () => window.clearInterval(t)
+  }, [enabled])
+}
+
 /** Đồng hồ tick để cập nhật "x phút trước". */
 export function useNow(intervalMs = 30000) {
   const [now, setNow] = useState(() => Date.now())

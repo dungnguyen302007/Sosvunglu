@@ -1,3 +1,4 @@
+import { pickTeam } from '../dispatch'
 import { normalizePhone } from '../geo'
 import { storage } from '../storage'
 import { OPEN_STATUSES, type Profile, type RescuerLocation, type Sos, type Team } from '../../types'
@@ -85,6 +86,9 @@ export function seedDb(): DemoDb {
         note: null,
         status: 'waiting',
         assigned_team_id: null,
+        assigned_at: null,
+        accepted_at: null,
+        tried_team_ids: [],
         created_at: minutesAgo(40),
         updated_at: minutesAgo(40),
       },
@@ -101,8 +105,11 @@ export function seedDb(): DemoDb {
         water_level: 'knee',
         injured: false,
         note: null,
-        status: 'assigned',
+        status: 'on_way',
         assigned_team_id: team2.id,
+        assigned_at: minutesAgo(10),
+        accepted_at: minutesAgo(9),
+        tried_team_ids: [team2.id],
         created_at: minutesAgo(15),
         updated_at: minutesAgo(10),
       },
@@ -112,6 +119,34 @@ export function seedDb(): DemoDb {
       { user_id: 'u-rescuer2', team_id: team2.id, lat: 16.4502, lng: 107.6101, on_duty: true, updated_at: now() },
     ],
   }
+}
+
+const DISPATCH_ACCEPT_MS = 2 * 60 * 1000
+
+/** Ghi sổ khi đổi đội — giống trigger guard_sos_update trong schema.sql. */
+function setTeam(s: Sos, team: string | null) {
+  if (team === s.assigned_team_id) return
+  s.assigned_team_id = team
+  s.assigned_at = team ? now() : null
+  s.accepted_at = null
+  if (team && !s.tried_team_ids.includes(team)) s.tried_team_ids = [...s.tried_team_ids, team]
+}
+
+function autoAssign(db: DemoDb, s: Sos) {
+  const team = pickTeam(s, { sos: db.sos, teams: db.teams, locations: db.locations, exclude: s.tried_team_ids, selfId: s.id })
+  if (!team) return
+  setTeam(s, team)
+  s.status = 'assigned'
+}
+
+/** Chuyển sang đội kế tiếp, hết đội thì về "Chờ cứu". Trả về true nếu có thay đổi. */
+function reassign(db: DemoDb, s: Sos): boolean {
+  const team = pickTeam(s, { sos: db.sos, teams: db.teams, locations: db.locations, exclude: s.tried_team_ids, selfId: s.id })
+  if (!team && !s.assigned_team_id) return false
+  setTeam(s, team)
+  s.status = team ? 'assigned' : 'waiting'
+  s.updated_at = now()
+  return true
 }
 
 export function createDemoBackend(): Backend {
@@ -199,9 +234,13 @@ export function createDemoBackend(): Backend {
         note: null,
         status: 'waiting',
         assigned_team_id: null,
+        assigned_at: null,
+        accepted_at: null,
+        tried_team_ids: [],
         created_at: now(),
         updated_at: now(),
       }
+      autoAssign(db, sos)
       db.sos.push(sos)
       save(db)
       return sos
@@ -225,9 +264,13 @@ export function createDemoBackend(): Backend {
         note: null,
         status: 'waiting',
         assigned_team_id: null,
+        assigned_at: null,
+        accepted_at: null,
+        tried_team_ids: [],
         created_at: now(),
         updated_at: now(),
       }
+      autoAssign(db, sos)
       db.sos.push(sos)
       save(db)
       return sos.id
@@ -237,7 +280,11 @@ export function createDemoBackend(): Backend {
       const db = load()
       const s = db.sos.find((x) => x.id === id)
       if (!s) return null
-      return { status: s.status, team_name: db.teams.find((t) => t.id === s.assigned_team_id)?.name ?? null }
+      return {
+        status: s.status,
+        team_name: db.teams.find((t) => t.id === s.assigned_team_id)?.name ?? null,
+        accepted: s.accepted_at != null,
+      }
     },
 
     async myOpenSos() {
@@ -275,8 +322,33 @@ export function createDemoBackend(): Backend {
       if (u.role === 'citizen') throw new Error('Không có quyền')
       const s = db.sos.find((x) => x.id === id)
       if (!s) throw new Error('Không tìm thấy SOS')
+      if (u.role === 'rescuer' && patch.assigned_team_id !== undefined && patch.assigned_team_id !== u.team_id) {
+        throw new Error('Cứu hộ chỉ được nhận SOS cho đội mình')
+      }
+      setTeam(s, patch.assigned_team_id === undefined ? s.assigned_team_id : patch.assigned_team_id)
       Object.assign(s, patch, { updated_at: now() })
       save(db)
+    },
+
+    async declineSos(id) {
+      const db = load()
+      const u = requireMe(db)
+      const s = db.sos.find((x) => x.id === id)
+      if (!s || u.role !== 'rescuer' || s.assigned_team_id !== u.team_id) throw new Error('SOS này không giao cho đội bạn')
+      reassign(db, s)
+      save(db)
+    },
+
+    async runDispatch() {
+      const db = load()
+      let changed = false
+      const t = Date.now()
+      for (const s of db.sos) {
+        const expired = s.status === 'assigned' && !s.accepted_at && s.assigned_at && t - new Date(s.assigned_at).getTime() > DISPATCH_ACCEPT_MS
+        const waiting = s.status === 'waiting' && !s.assigned_team_id
+        if (expired || waiting) changed = reassign(db, s) || changed
+      }
+      if (changed) save(db)
     },
 
     async listTeams() {

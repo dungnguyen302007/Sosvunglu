@@ -54,6 +54,12 @@ export interface Sos {
   note: string | null
   status: SosStatus
   assigned_team_id: string | null
+  /** Lúc giao cho đội hiện tại (đội phải xác nhận trong 2 phút) */
+  assigned_at: string | null
+  /** Lúc đội xác nhận nhận việc; null = chưa xác nhận */
+  accepted_at: string | null
+  /** Các đội đã từng được giao (để không giao lại đội đã từ chối / hết giờ) */
+  tried_team_ids: string[]
   created_at: string
   updated_at: string
   /** Hồ sơ người gửi (null nếu là khách hoặc không có quyền xem) */
@@ -101,6 +107,6 @@ export type CitizenSosPatch = Partial<Pick<Sos, 'water_level' | 'injured' | 'peo
   status?: 'cancelled'
 }
 
-export type StaffSosPatch = Partial<Pick<Sos, 'status' | 'assigned_team_id'>>
+export type StaffSosPatch = Partial<Pick<Sos, 'status' | 'assigned_team_id' | 'accepted_at'>>
 
 export const OPEN_STATUSES: SosStatus[] = ['waiting', 'assigned', 'on_way', 'arrived']

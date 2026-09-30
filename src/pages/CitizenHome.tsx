@@ -141,7 +141,11 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
     <div className="status-page">
       <div className={`card status-card status-${sos.status}`}>
         <div className="status-big">{STATUS_LABEL[sos.status]}</div>
-        <p>{STATUS_MESSAGE[sos.status]}</p>
+        <p>
+          {sos.status === 'assigned' && !sos.accepted_at
+            ? 'Đã báo cho đội cứu hộ gần nhất, đang chờ đội xác nhận. Giữ máy.'
+            : STATUS_MESSAGE[sos.status]}
+        </p>
         {teamName && <p>🚤 <b>{teamName}</b></p>}
         <p className="muted small">Gửi lúc {timeAgo(sos.created_at)} · {sos.people_count} người</p>
       </div>

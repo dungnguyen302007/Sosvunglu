@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { backend } from '../lib/backend'
 import { formatKm, isValidPhone, nearestTeams } from '../lib/geo'
-import { useLive, useNow } from '../lib/hooks'
+import { useDispatchLoop, useLive, useNow } from '../lib/hooks'
 import { ROLE_LABEL, STATUS_LABEL, TEAM_STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/labels'
 import { priorityScore, sortByPriority } from '../lib/priority'
 import { OPEN_STATUSES, type Profile, type RescuerLocation, type Role, type Sos, type SosStatus, type Team } from '../types'
@@ -23,6 +23,7 @@ export function CommanderHome({ profile }: { profile: Profile }) {
   const [tab, setTab] = useState<'map' | 'sos' | 'teams'>('map')
   const [filter, setFilter] = useState<Filter>('todo')
   const sos = useLive(() => backend.listSos(), 20000)
+  useDispatchLoop()
   const teams = useLive(() => backend.listTeams(), 30000)
   const locs = useLive(() => backend.listLocations(), 20000)
   const now = useNow()

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { acceptSecondsLeft } from '../lib/dispatch'
 import { directionsUrl, distanceKm, formatKm, type LatLng } from '../lib/geo'
 import { STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/labels'
 import { PRIORITY_COLOR, PRIORITY_LABEL, priorityLevel, priorityScore } from '../lib/priority'
@@ -57,9 +58,15 @@ export function SosCard({ sos, teams = [], from, now, actions, compact }: Props)
           {address && <div className="muted">🏠 {address}</div>}
           {p?.note && <div className="muted">📝 {p.note}</div>}
           {sos.note && <div className="muted">💬 {sos.note}</div>}
-          {team && <div className="muted">🚤 {team.name}</div>}
+          {team && (
+            <div className="muted">
+              🚤 {team.name}
+              {sos.accepted_at ? ' — đã xác nhận' : ''}
+            </div>
+          )}
         </>
       )}
+      <AcceptCountdown sos={sos} now={now} />
       <div className="row wrap">
         {phone && (
           <a className="btn btn-small btn-outline" href={`tel:${phone}`}>
@@ -77,5 +84,17 @@ export function SosCard({ sos, teams = [], from, now, actions, compact }: Props)
       </div>
       {actions && <div className="row wrap">{actions}</div>}
     </article>
+  )
+}
+
+function AcceptCountdown({ sos, now }: { sos: Sos; now: number }) {
+  const left = acceptSecondsLeft(sos, now)
+  if (left == null) return null
+  const mm = Math.floor(left / 60)
+  const ss = String(left % 60).padStart(2, '0')
+  return (
+    <div className="countdown">
+      ⏳ Chờ đội xác nhận — {left > 0 ? `tự chuyển đội khác sau ${mm}:${ss}` : 'đang chuyển đội khác…'}
+    </div>
   )
 }

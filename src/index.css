@@ -712,3 +712,9 @@ legend {
     grid-template-columns: 1fr;
   }
 }
+
+.countdown {
+  color: var(--orange);
+  font-weight: 600;
+  font-size: 0.9rem;
+}

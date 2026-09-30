@@ -268,6 +268,7 @@ function GuestSos() {
             </>
           )}
         </p>
+        {status?.status === 'assigned' && !status.accepted && <p className="muted small">Đang chờ đội xác nhận…</p>}
         <p className="muted small">Giữ máy, tiết kiệm pin. Đội cứu hộ có thể gọi vào {phone}.</p>
         <CallButton />
         {done && (

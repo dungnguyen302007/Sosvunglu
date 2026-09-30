@@ -103,7 +103,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async guestSosStatus(id) {
       const res = await sb.rpc('guest_sos_status', { p_id: id })
-      const rows = unwrap(res) as { status: Sos['status']; team_name: string | null }[]
+      const rows = unwrap(res) as { status: Sos['status']; team_name: string | null; accepted: boolean }[]
       return rows[0] ?? null
     },
 
@@ -136,6 +136,14 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async updateSos(id, patch) {
       unwrap(await sb.from('sos_requests').update(patch).eq('id', id))
+    },
+
+    async declineSos(id) {
+      unwrap(await sb.rpc('decline_sos', { p_id: id }))
+    },
+
+    async runDispatch() {
+      unwrap(await sb.rpc('run_dispatch'))
     },
 
     async listTeams() {

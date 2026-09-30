@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { backend } from '../lib/backend'
 import { beep, lastKnownPosition, vibrate } from '../lib/device'
 import { distanceKm, type LatLng } from '../lib/geo'
-import { useLive, useNow } from '../lib/hooks'
+import { useDispatchLoop, useLive, useNow } from '../lib/hooks'
 import { TEAM_STATUS_LABEL } from '../lib/labels'
 import { sortByPriority } from '../lib/priority'
 import { storage } from '../lib/storage'
@@ -64,6 +64,7 @@ export function RescuerHome({ profile }: { profile: Profile }) {
   const [onDuty, setOnDuty] = useState(() => storage.get<boolean>('on_duty') ?? false)
   const { pos, error: gpsError } = useDutyTracking(onDuty)
   const sos = useLive(() => backend.listSos(), 20000)
+  useDispatchLoop(onDuty)
   const teams = useLive(() => backend.listTeams(), 60000)
   const now = useNow()
   const [error, setError] = useState<string | null>(null)
@@ -87,10 +88,11 @@ export function RescuerHome({ profile }: { profile: Profile }) {
 
   useAlertOnNew(mine, nearby, onDuty)
 
-  const act = async (s: Sos, patch: Parameters<typeof backend.updateSos>[1]) => {
+  const act = async (s: Sos, patch: Parameters<typeof backend.updateSos>[1] | 'decline') => {
     setError(null)
     try {
-      await backend.updateSos(s.id, patch)
+      if (patch === 'decline') await backend.declineSos(s.id)
+      else await backend.updateSos(s.id, patch)
       await sos.reload()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -101,9 +103,29 @@ export function RescuerHome({ profile }: { profile: Profile }) {
     if (!s.assigned_team_id || s.status === 'cannot_reach') {
       if (!profile.team_id) return <span className="muted small">Bạn chưa thuộc đội nào — liên hệ chỉ huy.</span>
       return (
-        <button className="btn btn-danger btn-small" onClick={() => act(s, { assigned_team_id: profile.team_id, status: 'assigned' })}>
+        <button
+          className="btn btn-danger btn-small"
+          onClick={() => act(s, { assigned_team_id: profile.team_id, status: 'assigned', accepted_at: new Date().toISOString() })}
+        >
           🙋 Đội tôi nhận
         </button>
+      )
+    }
+    if (s.status === 'assigned' && !s.accepted_at) {
+      return (
+        <>
+          <button className="btn btn-ok btn-small" onClick={() => act(s, { accepted_at: new Date().toISOString() })}>
+            ✅ Nhận việc
+          </button>
+          <button
+            className="btn btn-outline btn-small"
+            onClick={() => {
+              if (confirm('Từ chối? Hệ thống sẽ chuyển cho đội gần nhất khác.')) void act(s, 'decline')
+            }}
+          >
+            ↪️ Từ chối
+          </button>
+        </>
       )
     }
     const next = NEXT_STEP[s.status]

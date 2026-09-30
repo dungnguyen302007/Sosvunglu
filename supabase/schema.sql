@@ -63,6 +63,10 @@ create table if not exists sos_requests (
   updated_at timestamptz not null default now()
 );
 create index if not exists sos_requests_status_idx on sos_requests (status);
+-- GĐ2: điều phối tự động
+alter table sos_requests add column if not exists assigned_at timestamptz;
+alter table sos_requests add column if not exists accepted_at timestamptz;
+alter table sos_requests add column if not exists tried_team_ids uuid[] not null default '{}';
 
 -- Vị trí mới nhất của mỗi người cứu hộ (1 dòng / người)
 create table if not exists rescuer_locations (
@@ -134,25 +138,37 @@ drop trigger if exists profiles_guard on profiles;
 create trigger profiles_guard before update on profiles
   for each row execute function guard_profile_update();
 
--- Người dân chỉ được sửa vài trường trên SOS của mình
+-- Người dân chỉ được sửa vài trường trên SOS của mình; ghi sổ việc giao đội
 create or replace function guard_sos_update() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   new.updated_at := now();
-  -- auth.uid() null = chạy từ SQL Editor / service key → bỏ qua kiểm tra
-  if auth.uid() is not null and coalesce(my_role(), 'citizen') = 'citizen' then
+  -- auth.uid() null = chạy từ SQL Editor / service key; sos.system = hàm điều phối → bỏ qua kiểm tra
+  if auth.uid() is not null and coalesce(current_setting('sos.system', true), '') <> 'on'
+     and coalesce(my_role(), 'citizen') = 'citizen' then
     if new.status is distinct from old.status and new.status <> 'cancelled' then
       raise exception 'Người dân chỉ được hủy SOS';
     end if;
     if new.assigned_team_id is distinct from old.assigned_team_id
-       or new.user_id is distinct from old.user_id then
+       or new.user_id is distinct from old.user_id
+       or new.accepted_at is distinct from old.accepted_at
+       or new.tried_team_ids is distinct from old.tried_team_ids then
       raise exception 'Không có quyền';
     end if;
   end if;
-  if auth.uid() is not null and my_role() = 'rescuer'
+  if auth.uid() is not null and coalesce(current_setting('sos.system', true), '') <> 'on'
+     and my_role() = 'rescuer'
      and new.assigned_team_id is distinct from old.assigned_team_id
      and new.assigned_team_id is distinct from my_team() then
     raise exception 'Cứu hộ chỉ được nhận SOS cho đội mình';
+  end if;
+  -- Đổi đội → bắt đầu đếm giờ chờ xác nhận lại, ghi nhớ đội đã thử
+  if new.assigned_team_id is distinct from old.assigned_team_id then
+    new.assigned_at := case when new.assigned_team_id is null then null else now() end;
+    if new.accepted_at is not distinct from old.accepted_at then new.accepted_at := null; end if;
+    if new.assigned_team_id is not null and not (new.assigned_team_id = any(new.tried_team_ids)) then
+      new.tried_team_ids := new.tried_team_ids || new.assigned_team_id;
+    end if;
   end if;
   if new.status is distinct from old.status or new.assigned_team_id is distinct from old.assigned_team_id then
     insert into sos_events (sos_id, actor_id, action)
@@ -188,10 +204,11 @@ begin
 end $$;
 
 -- Khách xem trạng thái SOS của mình (chỉ biết id mới xem được)
+drop function if exists guest_sos_status(uuid);
 create or replace function guest_sos_status(p_id uuid)
-returns table (status sos_status, team_name text, updated_at timestamptz)
+returns table (status sos_status, team_name text, accepted boolean, updated_at timestamptz)
 language sql stable security definer set search_path = public as $$
-  select s.status, t.name, s.updated_at
+  select s.status, t.name, s.accepted_at is not null, s.updated_at
   from sos_requests s left join teams t on t.id = s.assigned_team_id
   where s.id = p_id and s.user_id is null
 $$;
@@ -205,6 +222,128 @@ begin
   update profiles set role = p_role, team_id = p_team where phone = p_phone;
   if not found then raise exception 'Không tìm thấy tài khoản có SĐT này'; end if;
 end $$;
+
+-- ---------- Điều phối tự động (GĐ2) ----------
+-- Tham số: khớp với src/lib/dispatch.ts
+--   bán kính tìm đội 3 km, gộp SOS trùng trong 100 m,
+--   đội phải xác nhận trong 2 phút, vị trí cứu hộ cũ hơn 15 phút coi như mất liên lạc.
+
+create or replace function km_between(lat1 double precision, lng1 double precision,
+                                      lat2 double precision, lng2 double precision)
+returns double precision language sql immutable as $$
+  select 2 * 6371 * asin(sqrt(
+    power(sin(radians(lat2 - lat1) / 2), 2)
+    + cos(radians(lat1)) * cos(radians(lat2)) * power(sin(radians(lng2 - lng1) / 2), 2)))
+$$;
+
+-- Chọn đội cho một điểm SOS:
+--   1) Có SOS đang mở trong 100 m đã có đội → giao luôn đội đó (gộp, tránh cử 2 đội tới 1 chỗ).
+--   2) Không thì: đội "Sẵn sàng" có thành viên trong ca gần nhất, trong 3 km.
+create or replace function pick_team(p_lat double precision, p_lng double precision,
+                                     p_exclude uuid[], p_self uuid default null)
+returns uuid language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select s.assigned_team_id from sos_requests s
+      where s.id is distinct from p_self
+        and s.assigned_team_id is not null
+        and not (s.assigned_team_id = any(p_exclude))
+        and s.status in ('assigned', 'on_way', 'arrived')
+        and km_between(p_lat, p_lng, s.lat, s.lng) <= 0.1
+      order by km_between(p_lat, p_lng, s.lat, s.lng) limit 1),
+    (select t.id from teams t
+       join rescuer_locations l on l.team_id = t.id
+      where t.status = 'ready' and l.on_duty
+        and l.updated_at > now() - interval '15 minutes'
+        and not (t.id = any(p_exclude))
+      group by t.id
+     having min(km_between(p_lat, p_lng, l.lat, l.lng)) <= 3
+      order by min(km_between(p_lat, p_lng, l.lat, l.lng)) limit 1)
+  )
+$$;
+
+-- SOS mới → tự giao đội
+create or replace function auto_assign_sos() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare team uuid;
+begin
+  if new.assigned_team_id is null and new.status = 'waiting' then
+    team := pick_team(new.lat, new.lng, new.tried_team_ids, new.id);
+    if team is not null then
+      new.assigned_team_id := team;
+      new.status := 'assigned';
+      new.assigned_at := now();
+      new.tried_team_ids := new.tried_team_ids || team;
+    end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists sos_auto_assign on sos_requests;
+create trigger sos_auto_assign before insert on sos_requests
+  for each row execute function auto_assign_sos();
+
+-- Chuyển SOS sang đội kế tiếp (hoặc trả về "Chờ cứu" cho chỉ huy nếu hết đội)
+create or replace function reassign_sos(p_id uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s sos_requests; team uuid;
+begin
+  select * into s from sos_requests where id = p_id for update;
+  if not found then return null; end if;
+  team := pick_team(s.lat, s.lng, s.tried_team_ids, s.id);
+  if team is null and s.assigned_team_id is null then return null; end if;
+  perform set_config('sos.system', 'on', true);
+  update sos_requests
+     set assigned_team_id = team,
+         status = case when team is null then 'waiting'::sos_status else 'assigned'::sos_status end,
+         accepted_at = null
+   where id = p_id;
+  perform set_config('sos.system', 'off', true);
+  return team;
+end $$;
+
+-- Đội từ chối việc được giao
+create or replace function decline_sos(p_id uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from sos_requests where id = p_id and assigned_team_id = my_team())
+     or my_role() is distinct from 'rescuer' then
+    raise exception 'SOS này không giao cho đội bạn';
+  end if;
+  return reassign_sos(p_id);
+end $$;
+
+-- Quét định kỳ: đội không xác nhận sau 2 phút → chuyển đội khác;
+-- SOS đang chờ mà nay đã có đội mới vào ca → giao.
+create or replace function run_dispatch() returns int
+language plpgsql security definer set search_path = public as $$
+declare r record; n int := 0;
+begin
+  for r in
+    select id from sos_requests
+     where (status = 'assigned' and accepted_at is null and assigned_at < now() - interval '2 minutes')
+        or (status = 'waiting' and assigned_team_id is null)
+  loop
+    if reassign_sos(r.id) is not null then n := n + 1; end if;
+  end loop;
+  return n;
+end $$;
+
+-- Hẹn giờ chạy run_dispatch mỗi phút (Supabase có sẵn pg_cron; app cũng tự gọi dự phòng)
+do $$ begin
+  create extension if not exists pg_cron;
+  perform cron.unschedule(jobid) from cron.job where jobname = 'sos-dispatch';
+  perform cron.schedule('sos-dispatch', '* * * * *', 'select public.run_dispatch()');
+exception when others then
+  raise notice 'Không bật được pg_cron (%). App sẽ tự gọi run_dispatch định kỳ.', sqlerrm;
+end $$;
+
+-- Chỉ người đã đăng nhập mới được gọi các hàm điều phối
+revoke execute on function reassign_sos(uuid) from public, anon;
+revoke execute on function run_dispatch() from public, anon;
+revoke execute on function decline_sos(uuid) from public, anon;
+revoke execute on function pick_team(double precision, double precision, uuid[], uuid) from public, anon;
+grant execute on function run_dispatch() to authenticated;
+grant execute on function decline_sos(uuid) to authenticated;
 
 -- ---------- Row Level Security ----------
 alter table profiles enable row level security;
