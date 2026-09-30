@@ -13,6 +13,8 @@ function unwrap<T>(res: { data: T; error: { message: string } | null }): T {
   return res.data
 }
 
+let channelSeq = 0
+
 export function createSupabaseBackend(url: string, anonKey: string): Backend {
   const sb: SupabaseClient = createClient(url, anonKey, {
     auth: {
@@ -183,8 +185,9 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     },
 
     subscribe(cb) {
+      // Mỗi lần đăng ký một tên kênh riêng: nhiều màn hình cùng nghe thì không đụng nhau
       const channel = sb
-        .channel('sos-live')
+        .channel(`sos-live-${++channelSeq}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sos_requests' }, cb)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'rescuer_locations' }, cb)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, cb)
