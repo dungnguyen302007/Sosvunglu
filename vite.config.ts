@@ -28,7 +28,7 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Ô bản đồ đã xem được lưu lại, lúc mất mạng vẫn thấy
-            urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\//,
+            urlPattern: /^https:\/\/([abcd]\.basemaps\.cartocdn\.com|server\.arcgisonline\.com)\//,
             handler: 'CacheFirst',
             options: {
               cacheName: 'osm-tiles',

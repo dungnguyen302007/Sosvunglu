@@ -1,21 +1,61 @@
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useEffect, useMemo, type ReactNode } from 'react'
-import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { useMemo, type ReactNode } from 'react'
+import { CircleMarker, LayersControl, MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
+import { useEffect } from 'react'
 import type { LatLng } from '../lib/geo'
 import { PRIORITY_COLOR, priorityLevel, priorityScore } from '../lib/priority'
 import type { RescuerLocation, Sos } from '../types'
 
 const DEFAULT_CENTER: LatLng = { lat: 16.4637, lng: 107.5909 } // Huế
 
+/** Nền bản đồ: sáng, sạch, gần giống Google Maps; có thêm chế độ vệ tinh. */
+const TILES = {
+  street: {
+    url: 'https://{s}.basemaps.cartocdn.com/rest/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20,
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri',
+    subdomains: '',
+    maxZoom: 19,
+  },
+}
+
+function BaseLayers() {
+  return (
+    <LayersControl position="topright">
+      <LayersControl.BaseLayer checked name="Bản đồ">
+        <TileLayer {...TILES.street} />
+      </LayersControl.BaseLayer>
+      <LayersControl.BaseLayer name="Vệ tinh">
+        <TileLayer {...TILES.satellite} />
+      </LayersControl.BaseLayer>
+    </LayersControl>
+  )
+}
+
 const rescuerIcon = L.divIcon({
   className: 'rescuer-icon',
   html: '🚤',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
 })
 
 const meIcon = L.divIcon({ className: 'me-icon', html: '', iconSize: [18, 18], iconAnchor: [9, 9] })
+
+function sosIcon(color: string, people: number, assigned: boolean, critical: boolean) {
+  return L.divIcon({
+    className: 'sos-pin-wrap',
+    html: `<div class="sos-pin${assigned ? ' assigned' : ''}${critical ? ' critical' : ''}" style="background:${color}">${people}</div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -18],
+  })
+}
 
 function FitBounds({ points }: { points: LatLng[] }) {
   const map = useMap()
@@ -23,11 +63,25 @@ function FitBounds({ points }: { points: LatLng[] }) {
   useEffect(() => {
     if (points.length === 0) return
     if (points.length === 1) map.setView(points[0], 15)
-    else map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), { padding: [30, 30], maxZoom: 15 })
+    else map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), { padding: [40, 40], maxZoom: 15 })
     // chỉ căn lại khi số điểm thay đổi, không giật bản đồ mỗi lần cập nhật
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, map])
   return null
+}
+
+/** Nút "vị trí của tôi" góc dưới trái, bay tới vị trí hiện tại. */
+function LocateButton({ me }: { me: LatLng }) {
+  const map = useMap()
+  return (
+    <div className="leaflet-bottom leaflet-left">
+      <div className="leaflet-control locate-ctl">
+        <button type="button" aria-label="Vị trí của tôi" onClick={() => map.flyTo([me.lat, me.lng], Math.max(map.getZoom(), 16))}>
+          ◎
+        </button>
+      </div>
+    </div>
+  )
 }
 
 interface Props {
@@ -45,38 +99,28 @@ export function SosMap({ sos, locations = [], me, renderSosPopup, renderLocation
     [sos, locations, me],
   )
   return (
-    <MapContainer center={DEFAULT_CENTER} zoom={13} style={{ height, width: '100%' }} className="map">
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <MapContainer center={DEFAULT_CENTER} zoom={13} style={{ height, width: '100%' }} className="map" zoomControl={false}>
+      <BaseLayers />
+      <ZoomControl position="bottomright" />
       <FitBounds points={points} />
       {sos.map((s) => {
-        const color = PRIORITY_COLOR[priorityLevel(priorityScore(s))]
+        const score = priorityScore(s)
+        const level = priorityLevel(score)
         return (
-          <CircleMarker
-            key={s.id}
-            center={[s.lat, s.lng]}
-            radius={s.assigned_team_id ? 9 : 12}
-            pathOptions={{
-              color: s.assigned_team_id ? '#4dabf7' : '#fff',
-              weight: 3,
-              fillColor: color,
-              fillOpacity: 0.9,
-            }}
-          >
-            {renderSosPopup && <Popup>{renderSosPopup(s)}</Popup>}
-          </CircleMarker>
+          <Marker key={s.id} position={[s.lat, s.lng]} icon={sosIcon(PRIORITY_COLOR[level], s.people_count, !!s.assigned_team_id, level === 'critical')} zIndexOffset={score}>
+            {renderSosPopup && <Popup minWidth={240} maxWidth={290} autoPanPadding={[24, 80]}>{renderSosPopup(s)}</Popup>}
+          </Marker>
         )
       })}
       {locations
         .filter((l) => l.on_duty)
         .map((l) => (
-          <Marker key={l.user_id} position={[l.lat, l.lng]} icon={rescuerIcon}>
+          <Marker key={l.user_id} position={[l.lat, l.lng]} icon={rescuerIcon} zIndexOffset={5000}>
             {renderLocationPopup && <Popup>{renderLocationPopup(l)}</Popup>}
           </Marker>
         ))}
-      {me && <Marker position={[me.lat, me.lng]} icon={meIcon} />}
+      {me && <Marker position={[me.lat, me.lng]} icon={meIcon} zIndexOffset={4000} />}
+      {me && <LocateButton me={me} />}
     </MapContainer>
   )
 }
@@ -89,13 +133,11 @@ function ClickToPick({ onPick }: { onPick: (p: LatLng) => void }) {
 /** Chọn vị trí bằng cách chạm lên bản đồ (khi không lấy được GPS). */
 export function LocationPicker({ value, onPick }: { value: LatLng | null; onPick: (p: LatLng) => void }) {
   return (
-    <MapContainer center={value ?? DEFAULT_CENTER} zoom={value ? 16 : 12} style={{ height: '50vh', width: '100%' }} className="map">
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <MapContainer center={value ?? DEFAULT_CENTER} zoom={value ? 16 : 12} style={{ height: '50vh', width: '100%' }} className="map" zoomControl={false}>
+      <BaseLayers />
+      <ZoomControl position="bottomright" />
       <ClickToPick onPick={onPick} />
-      {value && <CircleMarker center={[value.lat, value.lng]} radius={12} pathOptions={{ color: '#fff', fillColor: '#ff2d2d', fillOpacity: 1 }} />}
+      {value && <CircleMarker center={[value.lat, value.lng]} radius={12} pathOptions={{ color: '#fff', weight: 3, fillColor: '#ff2d2d', fillOpacity: 1 }} />}
     </MapContainer>
   )
 }

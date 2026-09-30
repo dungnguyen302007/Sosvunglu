@@ -657,16 +657,79 @@ legend {
   border-radius: var(--radius);
 }
 .rescuer-icon {
-  font-size: 24px;
+  font-size: 20px;
   line-height: 30px;
   text-align: center;
-  filter: drop-shadow(0 0 3px #fff);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--blue);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 .me-icon {
-  background: var(--blue);
+  background: #1a73e8;
   border: 3px solid #fff;
   border-radius: 50%;
-  box-shadow: 0 0 0 6px rgba(77, 171, 247, 0.35);
+  box-shadow: 0 0 0 8px rgba(26, 115, 232, 0.3);
+}
+.sos-pin-wrap {
+  background: none;
+  border: none;
+}
+.sos-pin {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 800 15px/1 system-ui, sans-serif;
+  color: #111;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.sos-pin.assigned {
+  border-color: #1a73e8;
+}
+.sos-pin.critical {
+  animation: pin-pulse 1.4s ease-out infinite;
+}
+@keyframes pin-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 45, 45, 0.8), 0 2px 8px rgba(0, 0, 0, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 18px rgba(255, 45, 45, 0), 0 2px 8px rgba(0, 0, 0, 0.55);
+  }
+}
+.locate-ctl button {
+  width: 40px;
+  height: 40px;
+  margin: 0 0 12px 12px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: #1a73e8;
+  font-size: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+.leaflet-container {
+  font-family: inherit;
+}
+.leaflet-control-layers,
+.leaflet-bar {
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 10px !important;
+}
+.leaflet-bar a {
+  width: 38px !important;
+  height: 38px !important;
+  line-height: 38px !important;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
 }
 
 /* ---------- Bảng trượt (sheet) ---------- */
@@ -705,6 +768,10 @@ legend {
 }
 
 @media (max-width: 520px) {
+  .map-full {
+    height: calc(100dvh - 340px);
+    min-height: 320px;
+  }
   .stats {
     grid-template-columns: repeat(2, 1fr);
   }
