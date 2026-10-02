@@ -79,12 +79,21 @@ export function PendingCard({
   const body = smsBody({ name, phone, lat: pending.input.lat, lng: pending.input.lng, people: pending.input.people_count })
   return (
     <div className="card card-warn">
-      <h2>⏳ Chưa gửi được — đang chờ sóng</h2>
-      <p>
-        SOS đã lưu trong máy ({timeAgo(pending.queuedAt, now)}). Có sóng là app <b>tự gửi</b>, bạn không cần làm gì thêm.
-      </p>
-      {error && <p className="error">Lỗi: {error}</p>}
-      {showSms && (
+      {error ? (
+        <>
+          <h2>⚠️ Chưa gửi được SOS</h2>
+          <p className="error">{error}</p>
+          <p>Hãy <b>gọi điện</b> hoặc gửi <b>SMS</b> bên dưới, rồi bấm "Thử lại ngay".</p>
+        </>
+      ) : (
+        <>
+          <h2>⏳ Chưa gửi được — đang chờ sóng</h2>
+          <p>
+            SOS đã lưu trong máy ({timeAgo(pending.queuedAt, now)}). Có sóng là app <b>tự gửi</b>, bạn không cần làm gì thêm.
+          </p>
+        </>
+      )}
+      {(showSms || error) && (
         <>
           <p>Mạng yếu quá? Gửi bằng <b>tin nhắn SMS</b> — thường vẫn đi được khi 3G/4G không có:</p>
           <a className="btn btn-danger" href={smsLink(body)}>

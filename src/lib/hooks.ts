@@ -56,12 +56,16 @@ export function useSosQueue(onSent: (r: SentResult) => void) {
     onSentRef.current = onSent
   })
 
+  // Máy chủ TỪ CHỐI (không phải mất mạng) → thôi tự gửi lại mỗi 10 giây; người dùng bấm "Thử lại" thì vẫn gửi.
+  const tuChoi = useRef(false)
   const trySend = useCallback(async () => {
     try {
       const r = await flush(send)
+      tuChoi.current = false
       setError(null)
       if (r) onSentRef.current(r)
     } catch (e) {
+      tuChoi.current = true
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setPending(getPending())
@@ -72,7 +76,9 @@ export function useSosQueue(onSent: (r: SentResult) => void) {
   useEffect(() => {
     if (!hasPending) return
     void trySend()
-    const timer = window.setInterval(() => void trySend(), 10000)
+    const timer = window.setInterval(() => {
+      if (!tuChoi.current) void trySend()
+    }, 10000)
     const onOnline = () => void trySend()
     window.addEventListener('online', onOnline)
     return () => {
@@ -89,6 +95,7 @@ export function useSosQueue(onSent: (r: SentResult) => void) {
   )
 
   const cancel = useCallback(() => {
+    tuChoi.current = false
     clearPending()
     setPending(null)
     setError(null)

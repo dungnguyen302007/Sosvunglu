@@ -11,10 +11,11 @@ import { DANG_MO } from '@/lib/quyen-sos'
 /**
  * SOS khẩn KHÔNG cần tài khoản (lũ về mà chưa đăng ký). Đây là cửa công khai duy nhất ghi được
  * dữ liệu, nên chặn phá (bản Supabase cũ không chặn gì — đổi SĐT là gửi vô hạn):
- *  - mỗi IP: 3 SOS/giờ, 10 SOS/ngày;
+ *  - mỗi IP: 30 SOS/giờ, 100 SOS/ngày; mỗi SĐT: 5 SOS/ngày;
  *  - mỗi SĐT: 1 SOS đang mở; SĐT từng bị chỉ huy gắn "báo giả" thì không gửi được nữa.
- * Nhiều người thật dùng chung một IP (wifi nhà văn hoá, mạng di động NAT) vẫn đủ chỗ: người
- * thứ tư trong giờ được mời gọi 112 / đăng ký tài khoản.
+ * Hạn mức IP để RỘNG (sửa 02/10/2026 — bản đầu 3/giờ, chủ dự án thử vài lần là bị chặn): lúc lũ cả
+ * xóm dùng chung một IP (mạng di động NAT, wifi nhà văn hoá); chặn nhầm một người kêu cứu thật
+ * đắt hơn nhiều so với lọt vài SOS rác — rác đã có nút "Báo giả" của chỉ huy.
  */
 export const POST = xuLy(async (req: Request) => {
   const ip = ipNguoiGoi(await headers())
@@ -26,8 +27,8 @@ export const POST = xuLy(async (req: Request) => {
   })
   if (dangMo) return ok({ id: dangMo.id })
 
-  if (quaHanMuc(`sos-khach-gio:${ip}`, 3, 3600) || quaHanMuc(`sos-khach-ngay:${ip}`, 10, 86400)) {
-    throw new LoiNguoiDung('Máy này đã gửi nhiều SOS. Gọi ngay 112 hoặc số cứu hộ địa phương.', 429)
+  if (quaHanMuc(`sos-khach-gio:${ip}`, 30, 3600) || quaHanMuc(`sos-khach-ngay:${ip}`, 100, 86400) || quaHanMuc(`sos-khach-sdt:${f.phone}`, 5, 86400)) {
+    throw new LoiNguoiDung('Đã gửi quá nhiều SOS trong thời gian ngắn. Gọi ngay 112 hoặc số cứu hộ địa phương.', 429)
   }
   const tungBaoGia = await db.yeuCauSos.findFirst({ where: { sdtKhach: f.phone, baoGia: true }, select: { id: true } })
   if (tungBaoGia) throw new LoiNguoiDung('Số điện thoại này đã bị chặn gửi SOS. Gọi 112 nếu khẩn cấp.', 403)
