@@ -91,6 +91,9 @@ export const apiBackend: Backend = {
   createSos: (input) => goi<Sos>('/api/sos', { method: 'POST', json: input }),
   createGuestSos: async (input) => (await goi<{ id: string }>('/api/sos-khach', { method: 'POST', json: input })).id,
   guestSosStatus: (id) => goi<GuestStatus | null>(`/api/sos-khach/${encodeURIComponent(id)}`),
+  async updateGuestSos(id, patch) {
+    await goi(`/api/sos-khach/${encodeURIComponent(id)}`, { method: 'PATCH', json: patch })
+  },
   myOpenSos: () => goi<Sos | null>('/api/sos/cua-toi'),
   async updateMySos(id, patch) {
     await goi(`/api/sos/${id}/dan`, { method: 'PATCH', json: patch })

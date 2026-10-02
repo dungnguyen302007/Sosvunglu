@@ -1,8 +1,8 @@
 # HANDOFF — SOS vùng lũ
 
 > Đường dẫn: `D:\Clau Cowork\SOS VÙNG LŨ`
-> Cập nhật: 2026-10-02 08:30
-> Git: `g4-viet-lai` — đợt 02/10 đã commit trên máy, **CHƯA push, CHƯA lên VPS**
+> Cập nhật: 2026-10-02 09:00
+> Git: `g4-viet-lai` — đợt 02/10 đã commit + **đã push lên GitHub**, **CHƯA lên VPS**
 > Đang chạy: **https://cuuho.websitekhoinghiep.net** = bản 01/10 (`c7d9054`), chưa có các thay đổi dưới. Thư mục/IP ở `CLAUDE.local.md`. Bản cũ Vite + Supabase vẫn ở nhánh `main` / GitHub Pages.
 
 ## 1. Phiên này đã làm gì (02/10)
@@ -11,7 +11,8 @@
 - **Tắt ca** — `/api/ca-truc` + `doiHetNguoiTruc` (`dieu-phoi.ts`): theo từng người; cả đội hết người trong ca mà còn việc dở → trả việc cho đội khác / về chờ. Đang "đang tới" thì gửi vị trí 20 giây/lần (thường 60 giây).
 - **Icon bản đồ** — người cần cứu = hình người (1 người 1 hình, quá 5 thì 5 hình + số), cứu hộ = xuồng to kèm tên đội (`SosMap.tsx`, `globals.css`).
 - **Màn mở đầu = SOS khẩn** (không cần đăng ký), tab Đăng nhập / Đăng ký xếp sau.
-- Thêm thư viện `qrcode`. Kiểm: `npm test` 58/58, thử ngược 2 luật (đỏ đúng chỗ), `tsc` sạch, `next build` qua. **Chưa chạy thử với CSDL thật** (máy này không có Docker/Postgres).
+- **Khách (SOS khẩn)** — sau khi gửi được báo thêm mức nước / bị thương / người dễ tổn thương / số người, huỷ SOS, và thấy xuồng đội đã nhận trên bản đồ: `/api/sos-khach/[id]` GET mở rộng + PATCH, luật `khachDuocXem`/`khachDuocSua` (`quyen-sos.ts`), cột `YeuCauSos.deTonThuongKhach` (migration `20261002010000_suc_khoe_khach`), giao diện ở `AuthPage.tsx` `GuestSos`.
+- Thêm thư viện `qrcode`. Kiểm: `npm test` 60/60, thử ngược 3 luật (đỏ đúng chỗ), `tsc` sạch, `next build` qua. **Chưa chạy thử với CSDL thật** (máy này không có Docker/Postgres).
 
 ## 2. Quyết định đã chốt
 - Cứu hộ vào đội bằng **mã mời** (hạn 24 giờ, 30 lượt, thu hồi được); không có form tự nhận cứu hộ — chủ dự án 02/10.
@@ -27,18 +28,17 @@
 - (cũ) Tự cài Supabase lên VPS; giữ Vite + Supabase cloud; "realtime" giữ kết nối mở.
 
 ## 4. Đang làm dở
-- **Đưa đợt 02/10 lên VPS**: push `g4-viet-lai` → trên VPS (thư mục dự án): `git pull --ff-only` → `docker compose build` → `docker compose --profile tools run --rm tools` (chạy migration mã mời) → `docker compose up -d`. Phiên 02/10 Claude bị chặn ssh vào VPS → chủ dự án chạy.
+- **Đưa đợt 02/10 lên VPS** (2 migration, đều chỉ thêm): trên VPS (thư mục dự án): `git pull --ff-only` → `docker compose build` → `docker compose --profile tools run --rm tools` (chạy migration mã mời) → `docker compose up -d`. Phiên 02/10 Claude bị chặn ssh vào VPS → chủ dự án chạy.
 - **Số `0702760399` đã đăng ký, chưa rõ đã cấp chỉ huy chưa**: `docker compose --profile tools run --rm tools npx tsx scripts/cap-quyen.ts 0702760399 chi-huy`.
 - Chưa ai thử các màn sau đăng nhập trên bản thật (cả bản 01/10 lẫn đợt 02/10).
 
 ## 5. Câu hỏi còn treo
-- **Khách (SOS khẩn, không tài khoản) có được bổ sung sức khoẻ / số người / mức nước và xem xuồng đội tới không?** Hiện khách chỉ thấy trạng thái + tên đội. Làm được bằng mã SOS máy khách đang giữ; Claude đề nghị làm.
 - Cứu hộ khoá màn hình điện thoại thì trình duyệt ngừng gửi vị trí (giới hạn của web app) — cần dặn đội để màn hình sáng, hoặc tính cách khác.
 - Giữ giao diện chép hay viết lại mỗi vai một trang (`/dan`, `/cuu-ho`, `/chi-huy`)? Claude nghiêng giữ + sửa dần. Chỗ đã thấy cần rà, chưa sửa: hồ sơ có dữ liệu sức khoẻ cất ở `localStorage` `profile_cache`; chỉ huy tải tới 20.000 hộ dân + xuất CSV không ghi nhật ký; thiếu icon PNG 192/512; `SosCard` rút gọn hiện tên "Ẩn — hiện khi đội nhận".
 - Kho GitHub công khai hay riêng tư (khi gộp vào `main`)? Môi trường thử riêng có làm không?
 
 ## 6. Bước tiếp theo
-1. Chủ dự án gật → push + lên VPS (mục 4) + cấp chỉ huy cho `0702760399`.
+1. Lên VPS (mục 4) + cấp chỉ huy cho `0702760399`.
 2. Thử trọn vòng bằng 3 số: chỉ huy tạo đội → tạo mã mời → số 2 đăng ký bằng link → bật ca → số 3 bấm SOS → đội nhận → dân thấy xuồng → cứu xong; thử tắt ca khi còn việc dở. Xem ở khổ 375px.
-3. Quyết câu "khách bổ sung thông tin + xem xuồng" (mục 5).
+3. Thử luồng khách: mở trang không đăng nhập → SOS khẩn → báo thêm → thấy xuồng khi đội nhận.
 4. Treo khác: Drive mã hoá cho sao lưu (cần chủ dự án tạo remote rclone), chờ CRM-CẢNH gắn tổng quan + két, gộp `g4-viet-lai` vào `main` + tắt GitHub Pages.

@@ -104,6 +104,9 @@ export const danSuaSos = z
   })
   .partial()
 
+/** Khách sửa SOS khẩn của mình: như người dân + tự khai người dễ tổn thương. */
+export const khachSuaSos = danSuaSos.extend({ vulnerable: nhom.optional() })
+
 const trangThaiSos = z.enum(['waiting', 'assigned', 'on_way', 'arrived', 'rescued', 'cannot_reach', 'cancelled'])
 
 export const nhanVienSuaSos = z

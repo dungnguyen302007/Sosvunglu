@@ -1,6 +1,7 @@
 import type {
   CitizenSosPatch,
   GuestSosInput,
+  GuestSosPatch,
   Invite,
   NewSos,
   Profile,
@@ -12,12 +13,27 @@ import type {
   SosStatus,
   StaffSosPatch,
   Team,
+  Vulnerable,
+  WaterLevel,
 } from '../../types'
 
 export interface GuestStatus {
   status: SosStatus
   team_name: string | null
   accepted: boolean
+  /** Những gì khách đã khai (để sửa tiếp) */
+  sos: {
+    lat: number
+    lng: number
+    accuracy: number | null
+    people_count: number
+    water_level: WaterLevel | null
+    injured: boolean
+    vulnerable: Vulnerable[]
+    created_at: string
+  }
+  /** Xuồng của đội ĐÃ NHẬN đi cứu (ẩn danh); rỗng khi chưa có đội nhận */
+  boats: RescuerLocation[]
 }
 
 /** Lớp dữ liệu chung: bản Supabase (thật) và bản demo (lưu trên máy) cùng giao diện. */
@@ -38,6 +54,8 @@ export interface Backend {
   createSos(input: NewSos): Promise<Sos>
   createGuestSos(input: GuestSosInput): Promise<string>
   guestSosStatus(id: string): Promise<GuestStatus | null>
+  /** Khách bổ sung thông tin / huỷ SOS khẩn của mình (chìa khoá là mã SOS máy đang giữ). */
+  updateGuestSos(id: string, patch: GuestSosPatch): Promise<void>
   myOpenSos(): Promise<Sos | null>
   updateMySos(id: string, patch: CitizenSosPatch): Promise<void>
 

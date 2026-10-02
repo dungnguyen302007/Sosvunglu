@@ -133,6 +133,8 @@ model YeuCauSos {
   /// SOS khẩn không cần tài khoản
   tenKhach    String?
   sdtKhach    String?
+  /// ⚠️ Dữ liệu sức khoẻ khách tự khai sau khi gửi SOS khẩn (khách không có hồ sơ). Cắt theo quyền như hồ sơ.
+  deTonThuongKhach NhomDeTonThuong[] @default([])
   lat         Float
   lng         Float
   /// Sai số GPS (m); null = chọn tay trên bản đồ

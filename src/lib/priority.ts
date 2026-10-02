@@ -10,7 +10,7 @@ const WATER_SCORE: Record<WaterLevel, number> = { roof: 50, chest: 35, knee: 15,
 export function priorityScore(sos: Sos, now = Date.now()): number {
   let score = sos.water_level ? WATER_SCORE[sos.water_level] : 10
   if (sos.injured) score += 25
-  score += Math.min((sos.profile?.vulnerable.length ?? 0) * 8, 24)
+  score += Math.min((sos.profile?.vulnerable ?? sos.guest_vulnerable ?? []).length * 8, 24)
   if (sos.battery != null) {
     if (sos.battery <= 15) score += 15
     else if (sos.battery <= 30) score += 8

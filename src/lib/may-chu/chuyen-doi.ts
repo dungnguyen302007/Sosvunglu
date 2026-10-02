@@ -88,6 +88,7 @@ export function sosDayDu(s: SosCoNguoi): Sos {
     user_id: s.nguoiGuiId,
     guest_name: s.tenKhach,
     guest_phone: s.sdtKhach,
+    guest_vulnerable: s.deTonThuongKhach.map((v) => NHOM[v]),
     lat: s.lat,
     lng: s.lng,
     accuracy: s.saiSo,
@@ -118,6 +119,7 @@ export function sosRutGon(s: YeuCauSos): Sos {
     user_id: s.nguoiGuiId ? 'an' : null,
     guest_name: 'Ẩn — hiện khi đội nhận',
     guest_phone: null,
+    guest_vulnerable: [],
     note: null,
     tried_team_ids: [],
   }

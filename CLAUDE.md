@@ -27,7 +27,7 @@ Webapp (PWA) SOS vùng lũ: người dân nhấn giữ nút SOS gửi hồ sơ +
 
 ```bash
 npm install
-npm test               # vitest: 58 bài (28 bài quyền SOS + vị trí, 7 bài mã mời)
+npm test               # vitest: 60 bài (30 bài quyền SOS + vị trí + khách, 7 bài mã mời)
 npx tsc --noEmit
 npx next build
 # Trên VPS (thư mục dự án): docker compose build · docker compose --profile tools run --rm tools · docker compose up -d

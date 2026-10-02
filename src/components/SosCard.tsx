@@ -44,9 +44,9 @@ export function SosCard({ sos, teams = [], from, now, actions, compact }: Props)
         <span>🕒 {timeAgo(sos.created_at, now)}</span>
         {sos.accuracy != null && <span className="muted">GPS ±{Math.round(sos.accuracy)} m</span>}
       </div>
-      {p && p.vulnerable.length > 0 && (
+      {(p?.vulnerable ?? sos.guest_vulnerable ?? []).length > 0 && (
         <div className="facts">
-          {p.vulnerable.map((v) => (
+          {(p?.vulnerable ?? sos.guest_vulnerable ?? []).map((v) => (
             <span key={v} className="fact-warn">
               ⚠️ {VULNERABLE_LABEL[v]}
             </span>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BAN_KINH_GAN_KM, doiDangCuu, kiemTraViec, mucXemSos, mucXemViTri, TuChoi, VI_TRI_CU_MS, VI_TRI_SONG_MS } from './quyen-sos'
+import { BAN_KINH_GAN_KM, doiDangCuu, khachDuocSua, khachDuocXem, kiemTraViec, mucXemSos, mucXemViTri, TuChoi, VI_TRI_CU_MS, VI_TRI_SONG_MS } from './quyen-sos'
 
 /**
  * Bộ kiểm phân quyền SOS (hàm thuần). Mỗi vai CỐ xem / sửa thứ không phải của mình → phải bị chặn.
@@ -136,6 +136,22 @@ describe('xem vị trí cứu hộ', () => {
 
   it('vai lạ → không thấy vị trí nào', () => {
     expect(mucXemViTri(vaiLa, vt(), { viTriToi: viTriMoi, doiDangCuuToi: 'doi-B' }, now)).toBeNull()
+  })
+})
+
+describe('khách (SOS khẩn, không tài khoản)', () => {
+  it('mã SOS chỉ mở được SOS do KHÁCH gửi — không mở được SOS của tài khoản', () => {
+    expect(khachDuocXem({ nguoiGuiId: null })).toBe(true)
+    expect(khachDuocXem({ nguoiGuiId: 'dan-1' })).toBe(false)
+    expect(khachDuocSua({ nguoiGuiId: 'dan-1', trangThai: 'CHO_CUU' as never })).toBe(false)
+  })
+
+  it('khách sửa được khi còn cần cứu; đã an toàn / đã huỷ thì không', () => {
+    expect(khachDuocSua({ nguoiGuiId: null, trangThai: 'CHO_CUU' as never })).toBe(true)
+    expect(khachDuocSua({ nguoiGuiId: null, trangThai: 'DANG_TOI' as never })).toBe(true)
+    expect(khachDuocSua({ nguoiGuiId: null, trangThai: 'KHONG_TIEP_CAN' as never })).toBe(true)
+    expect(khachDuocSua({ nguoiGuiId: null, trangThai: 'DA_AN_TOAN' as never })).toBe(false)
+    expect(khachDuocSua({ nguoiGuiId: null, trangThai: 'DA_HUY' as never })).toBe(false)
   })
 })
 

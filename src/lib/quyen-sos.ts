@@ -96,6 +96,18 @@ export function mucXemViTri(
   }
 }
 
+/**
+ * KHÁCH (không tài khoản) xem / sửa SOS khẩn: "chìa khoá" là mã SOS (uuid) máy khách tự giữ.
+ * Chỉ SOS do khách gửi; SOS của tài khoản thì không bao giờ mở được bằng đường này.
+ * Sửa: chỉ khi còn đang cần cứu.
+ */
+export function khachDuocXem(sos: Pick<YeuCauSos, 'nguoiGuiId'>): boolean {
+  return sos.nguoiGuiId == null
+}
+export function khachDuocSua(sos: Pick<YeuCauSos, 'nguoiGuiId' | 'trangThai'>): boolean {
+  return khachDuocXem(sos) && (DANG_MO.includes(sos.trangThai) || sos.trangThai === 'KHONG_TIEP_CAN')
+}
+
 export class TuChoi extends Error {}
 
 /** Việc cứu hộ / chỉ huy được làm trên một SOS. */

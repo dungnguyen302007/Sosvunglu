@@ -47,6 +47,8 @@ export interface Sos {
   user_id: string | null
   guest_name: string | null
   guest_phone: string | null
+  /** Người dễ tổn thương do KHÁCH tự khai (khách không có hồ sơ). Rỗng nếu không có quyền xem. */
+  guest_vulnerable?: Vulnerable[]
   lat: number
   lng: number
   accuracy: number | null
@@ -130,6 +132,9 @@ export interface GuestSosInput extends NewSos {
 export type CitizenSosPatch = Partial<Pick<Sos, 'water_level' | 'injured' | 'people_count' | 'note' | 'lat' | 'lng' | 'accuracy' | 'battery'>> & {
   status?: 'cancelled'
 }
+
+/** Khách (SOS khẩn) bổ sung thông tin sau khi gửi. */
+export type GuestSosPatch = CitizenSosPatch & { vulnerable?: Vulnerable[] }
 
 export type StaffSosPatch = Partial<Pick<Sos, 'status' | 'assigned_team_id' | 'accepted_at'>>
 

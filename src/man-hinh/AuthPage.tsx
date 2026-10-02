@@ -1,14 +1,15 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { backend } from '../lib/backend'
 import type { GuestStatus } from '../lib/backend/types'
-import { isValidPhone, normalizePhone } from '../lib/geo'
+import { distanceKm, formatKm, isValidPhone, normalizePhone } from '../lib/geo'
 import { useSosQueue } from '../lib/hooks'
 import { boMaKhoiLink, maTrongLink } from '../lib/link-moi'
-import { STATUS_LABEL, VULNERABLE_LABEL } from '../lib/labels'
+import { STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL } from '../lib/labels'
 import { storage } from '../lib/storage'
-import type { SignUpInput, Vulnerable } from '../types'
+import type { GuestSosPatch, SignUpInput, Sos, Vulnerable, WaterLevel } from '../types'
 import { CallButton, ErrorLine, PendingCard, Tabs } from '../components/common'
 import { HomeLocation } from '../components/HomeLocation'
+import { isLive, SosMap } from '../components/SosMap'
 import { SosTrigger } from '../components/SosTrigger'
 
 type Tab = 'login' | 'register' | 'guest'
@@ -291,6 +292,34 @@ export function Stepper({ value, onChange, min = 1, max = 100 }: { value: number
   )
 }
 
+const WATER_KEYS = Object.keys(WATER_LABEL) as WaterLevel[]
+
+/** Dựng một `Sos` tối thiểu từ trạng thái khách để vẽ lên bản đồ. */
+function guestAsSos(id: string, st: GuestStatus): Sos {
+  return {
+    id,
+    user_id: null,
+    guest_name: null,
+    guest_phone: null,
+    guest_vulnerable: st.sos.vulnerable,
+    lat: st.sos.lat,
+    lng: st.sos.lng,
+    accuracy: st.sos.accuracy,
+    battery: null,
+    people_count: st.sos.people_count,
+    water_level: st.sos.water_level,
+    injured: st.sos.injured,
+    note: null,
+    status: st.status,
+    assigned_team_id: st.accepted ? 'doi' : null,
+    assigned_at: null,
+    accepted_at: null,
+    tried_team_ids: [],
+    created_at: st.sos.created_at,
+    updated_at: st.sos.created_at,
+  }
+}
+
 /** SOS cho người chưa có tài khoản: chỉ cần tên + SĐT. */
 function GuestSos() {
   const [name, setName] = useState(() => storage.get<string>('guest_name') ?? '')
@@ -306,17 +335,20 @@ function GuestSos() {
     }
   })
 
+  const load = useCallback(
+    (id: string) =>
+      backend
+        .guestSosStatus(id)
+        .then(setStatus)
+        .catch(() => {}),
+    [],
+  )
   useEffect(() => {
     if (!sentId) return
-    const load = () =>
-      backend
-        .guestSosStatus(sentId)
-        .then(setStatus)
-        .catch(() => {})
-    void load()
-    const t = window.setInterval(load, 20000)
+    void load(sentId)
+    const t = window.setInterval(() => void load(sentId), 20000)
     return () => window.clearInterval(t)
-  }, [sentId])
+  }, [sentId, load])
 
   if (queue.pending?.kind === 'guest') {
     return (
@@ -333,34 +365,107 @@ function GuestSos() {
 
   if (sentId) {
     const done = status && ['rescued', 'cancelled'].includes(status.status)
+    const g = status?.sos
+    const patch = async (p: GuestSosPatch) => {
+      setError(null)
+      try {
+        await backend.updateGuestSos(sentId, p)
+        await load(sentId)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e))
+      }
+    }
+    const boats = (status?.boats ?? []).filter((b) => isLive(b))
+    const nearestKm = g && boats.length ? Math.min(...boats.map((b) => distanceKm(b, g))) : null
     return (
-      <div className="card card-ok">
-        <h2>✅ Đã gửi SOS</h2>
-        <p>
-          Trạng thái: <b>{status ? STATUS_LABEL[status.status] : 'Đã nhận'}</b>
-          {status?.team_name && (
-            <>
-              {' '}
-              — <b>{status.team_name}</b>
-            </>
+      <>
+        <div className="card card-ok">
+          <h2>✅ Đã gửi SOS</h2>
+          <p>
+            Trạng thái: <b>{status ? STATUS_LABEL[status.status] : 'Đã nhận'}</b>
+            {status?.team_name && (
+              <>
+                {' '}
+                — <b>{status.team_name}</b>
+              </>
+            )}
+          </p>
+          {status?.status === 'assigned' && !status.accepted && <p className="muted small">Đang chờ đội xác nhận…</p>}
+          <p className="muted small">Giữ máy, tiết kiệm pin. Đội cứu hộ có thể gọi vào {phone}.</p>
+          <CallButton />
+          {done && (
+            <button
+              className="btn btn-outline btn-block"
+              onClick={() => {
+                storage.remove('guest_sos_id')
+                setSentId(null)
+                setStatus(null)
+              }}
+            >
+              Gửi SOS mới
+            </button>
           )}
-        </p>
-        {status?.status === 'assigned' && !status.accepted && <p className="muted small">Đang chờ đội xác nhận…</p>}
-        <p className="muted small">Giữ máy, tiết kiệm pin. Đội cứu hộ có thể gọi vào {phone}.</p>
-        <CallButton />
-        {done && (
-          <button
-            className="btn btn-outline btn-block"
-            onClick={() => {
-              storage.remove('guest_sos_id')
-              setSentId(null)
-              setStatus(null)
-            }}
-          >
-            Gửi SOS mới
-          </button>
+        </div>
+
+        {g && !done && (
+          <>
+            <div className="card">
+              {nearestKm != null ? (
+                <p className="boat-line">
+                  🚤 <b>{status?.team_name ?? 'Đội cứu hộ'}</b> đang cách bạn khoảng <b>{formatKm(nearestKm)}</b>
+                </p>
+              ) : (
+                <p className="muted small">Hình người là vị trí bạn đã gửi. Khi có đội nhận, xuồng của đội sẽ hiện trên bản đồ này.</p>
+              )}
+              <SosMap sos={[guestAsSos(sentId, status)]} locations={boats} locationLabel={() => status?.team_name ?? undefined} height="240px" />
+            </div>
+
+            <div className="card">
+              <h3>Báo thêm cho đội cứu hộ (không bắt buộc)</h3>
+              <p className="muted small">Càng rõ, đội càng biết cứu ai trước và mang theo gì.</p>
+              <p className="muted small">Nước đang ngập tới:</p>
+              <div className="chips">
+                {WATER_KEYS.map((w) => (
+                  <button key={w} className={`chip${g.water_level === w ? ' on' : ''}`} onClick={() => void patch({ water_level: w })}>
+                    {WATER_LABEL[w]}
+                  </button>
+                ))}
+              </div>
+              <p className="muted small">Trong nhà có:</p>
+              <div className="chips">
+                <button className={`chip${g.injured ? ' on' : ''}`} onClick={() => void patch({ injured: !g.injured })}>
+                  🩹 Người bị thương
+                </button>
+                {VULNERABLE_KEYS.map((k) => {
+                  const on = g.vulnerable.includes(k)
+                  return (
+                    <button
+                      key={k}
+                      className={`chip${on ? ' on' : ''}`}
+                      onClick={() => void patch({ vulnerable: on ? g.vulnerable.filter((x) => x !== k) : [...g.vulnerable, k] })}
+                    >
+                      {VULNERABLE_LABEL[k]}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="people-line">
+                <span>Số người:</span>
+                <Stepper value={g.people_count} onChange={(v) => void patch({ people_count: v })} />
+              </div>
+              <ErrorLine error={error} />
+              <button
+                className="btn btn-ok btn-block"
+                onClick={() => {
+                  if (confirm('Bạn đã an toàn và muốn hủy yêu cầu cứu hộ?')) void patch({ status: 'cancelled' })
+                }}
+              >
+                ✅ Tôi đã an toàn — hủy SOS
+              </button>
+            </div>
+          </>
         )}
-      </div>
+      </>
     )
   }
 
