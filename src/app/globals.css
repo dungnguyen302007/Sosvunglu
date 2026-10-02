@@ -958,3 +958,9 @@ legend {
   display: inline;
   padding: 0;
 }
+
+/* Ô bật lên của bản đồ nền trắng: nút viền (Báo giả…) phải chữ đậm, không thì chìm */
+.leaflet-popup-content button.btn-outline {
+  color: #111;
+  border-color: #888;
+}
