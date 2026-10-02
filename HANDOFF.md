@@ -40,7 +40,7 @@
 
 ## 4. Đang làm dở
 - **Lên VPS bản mới nhất** (có migration `20261002020000_thong_bao_day` + cần tạo khoá VAPID), trong thư mục dự án trên VPS:
-  `git pull --ff-only` → `docker compose --profile tools build` → `docker compose --profile tools run --rm tools` → `sh scripts/tao-khoa-thong-bao.sh` → `docker compose up -d`.
+  **một lệnh**: `git pull --ff-only; sh scripts/len-ban-moi.sh` (lần đầu cần `git pull` trước để có script; các lần sau chỉ `sh scripts/len-ban-moi.sh`). Script chưa chạy thật lần nào.
   Phiên 02/10 Claude bị chặn ssh → chủ dự án chạy tay.
 - **Thông báo đẩy chưa thử trên máy thật** (Android Chrome; iPhone phải "Thêm vào MH chính").
 - **Máy cứu hộ Android của chủ dự án**: Chrome đang ghi "từ chối" quyền vị trí (mã 1) → mở lại theo thẻ hướng dẫn; chưa xác nhận xuồng đã hiện trên bản đồ chỉ huy.
