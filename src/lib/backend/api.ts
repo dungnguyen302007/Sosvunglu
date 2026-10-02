@@ -1,4 +1,5 @@
 import type { Backend, GuestStatus } from './types'
+import { tatThongBaoDay } from '../thong-bao'
 import type { AddressHit, Invite, Profile, RescuerLocation, Sos, Team } from '../../types'
 
 /**
@@ -74,6 +75,7 @@ export const apiBackend: Backend = {
     phatSuKienDangNhap()
   },
   async signOut() {
+    await tatThongBaoDay() // gỡ thông báo đẩy TRƯỚC khi mất phiên — người sau dùng máy không nhận tin của mình
     await goi('/api/dang-xuat', { method: 'POST' }).catch(() => {})
     try {
       localStorage.removeItem('profile_cache')
@@ -141,6 +143,12 @@ export const apiBackend: Backend = {
   listLocations: () => goi<RescuerLocation[]>('/api/vi-tri'),
   endDuty: async () => (await goi<{ tra_viec: number }>('/api/ca-truc', { method: 'POST' })).tra_viec,
 
+  async savePush(sub) {
+    await goi('/api/thong-bao', { method: 'POST', json: sub })
+  },
+  async removePush(endpoint) {
+    await goi('/api/thong-bao', { method: 'DELETE', json: { endpoint } })
+  },
   searchAddress: (q, near) => goi<AddressHit[]>('/api/tim-dia-chi', { method: 'POST', json: { q, near: near ?? null } }),
 
   subscribe(cb) {

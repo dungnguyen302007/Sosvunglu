@@ -7,6 +7,8 @@ export interface CauHinh {
   soSms: string
   banDoUrl: string
   banDoNguon: string
+  /** Khoá công khai VAPID của thông báo đẩy; rỗng = máy chủ chưa bật thông báo đẩy */
+  vapid: string
 }
 
 declare global {
@@ -28,6 +30,9 @@ export const cauHinh = {
   },
   get banDoUrl() {
     return doc().banDoUrl || ''
+  },
+  get vapid() {
+    return doc().vapid || ''
   },
   get banDoNguon() {
     return doc().banDoNguon || '&copy; OpenStreetMap contributors'

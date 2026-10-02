@@ -92,6 +92,10 @@ export interface Backend {
   /** Tắt ca (nghỉ). Trả số việc đang dở đã trả về trung tâm vì đội không còn ai trực. */
   endDuty(): Promise<number>
 
+  /** Lưu / gỡ đăng ký thông báo đẩy của trình duyệt này. */
+  savePush(sub: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<void>
+  removePush(endpoint: string): Promise<void>
+
   /** Tìm toạ độ theo địa chỉ gõ tay (ưu tiên quanh `near`). Không cần đăng nhập. */
   searchAddress(q: string, near?: { lat: number; lng: number } | null): Promise<AddressHit[]>
 

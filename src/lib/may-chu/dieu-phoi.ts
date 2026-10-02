@@ -5,6 +5,12 @@ import type { Prisma, YeuCauSos } from '@prisma/client'
 import { DISPATCH, pickTeam } from '@/lib/dispatch'
 import { db } from './db'
 import { doi as sangDoi, sosDayDu, viTri as sangViTri } from './chuyen-doi'
+import { baoDoiCoViec, baoSosChuaCoDoi } from './thong-bao'
+
+/** Gửi thông báo đẩy SAU khi giao dịch xong, không chờ, không để lỗi gửi làm hỏng việc giao đội. */
+function bao(sosId: string, doiId: string | null) {
+  void (doiId ? baoDoiCoViec(doiId, sosId) : baoSosChuaCoDoi(sosId))
+}
 
 /**
  * Điều phối tự động (thay pick_team / reassign_sos / run_dispatch của bản Supabase).
@@ -57,20 +63,24 @@ async function trongKhoa<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
 
 /** SOS vừa tạo → thử giao ngay. */
 export async function giaoSosMoi(sosId: string) {
-  return trongKhoa(async (tx) => {
+  const doiId = await trongKhoa(async (tx) => {
     const s = await tx.yeuCauSos.findUnique({ where: { id: sosId } })
-    if (!s || s.trangThai !== 'CHO_CUU' || s.doiId) return null
+    if (!s || s.trangThai !== 'CHO_CUU' || s.doiId) return undefined
     return giaoLai(tx, s, await napBoiCanh(tx), null, 'sos-moi')
   })
+  if (doiId !== undefined) bao(sosId, doiId) // có đội → báo đội; chưa có đội nào gần → báo chỉ huy + cứu hộ quanh đó
+  return doiId ?? null
 }
 
 /** Đội từ chối → chuyển đội kế tiếp. Gọi SAU khi đã kiểm quyền. */
 export async function doiTuChoi(sosId: string, nguoiLamId: string) {
-  return trongKhoa(async (tx) => {
+  const doiId = await trongKhoa(async (tx) => {
     const s = await tx.yeuCauSos.findUnique({ where: { id: sosId } })
-    if (!s) return null
+    if (!s) return undefined
     return giaoLai(tx, s, await napBoiCanh(tx), nguoiLamId, 'doi-tu-choi')
   })
+  if (doiId !== undefined) bao(sosId, doiId)
+  return doiId ?? null
 }
 
 /**
@@ -80,7 +90,8 @@ export async function doiTuChoi(sosId: string, nguoiLamId: string) {
  * (Không xét "còn tín hiệu": đồng đội đang lái xuồng, máy trong túi tắt màn hình vẫn là đang trực.)
  */
 export async function doiHetNguoiTruc(doiId: string, nguoiLamId: string): Promise<number> {
-  return trongKhoa(async (tx) => {
+  const daGiao: [string, string | null][] = []
+  const n = await trongKhoa(async (tx) => {
     if ((await tx.viTriCuuHo.count({ where: { doiId, trongCa: true } })) > 0) return 0
     const dangDo = await tx.yeuCauSos.findMany({
       where: { doiId, trangThai: { in: ['DA_GIAO', 'DANG_TOI', 'DA_TOI'] } },
@@ -89,13 +100,15 @@ export async function doiHetNguoiTruc(doiId: string, nguoiLamId: string): Promis
     if (dangDo.length === 0) return 0
     const ctx = await napBoiCanh(tx)
     for (const s of dangDo) {
-      await giaoLai(tx, s, ctx, nguoiLamId, 'doi-tat-ca')
+      daGiao.push([s.id, await giaoLai(tx, s, ctx, nguoiLamId, 'doi-tat-ca')])
       // SOS này không còn của đội vừa nghỉ → đừng để SOS sau "gộp" theo nó.
       const i = ctx.sos.findIndex((x) => x.id === s.id)
       if (i >= 0 && ctx.sos[i].assigned_team_id === doiId) ctx.sos[i] = { ...ctx.sos[i], assigned_team_id: null, status: 'waiting' }
     }
     return dangDo.length
   })
+  for (const [sosId, doiMoi] of daGiao) bao(sosId, doiMoi)
+  return n
 }
 
 /**
@@ -104,7 +117,8 @@ export async function doiHetNguoiTruc(doiId: string, nguoiLamId: string): Promis
  *  - SOS đang chờ, nay đã có đội vào ca → giao.
  */
 export async function quetDieuPhoi(): Promise<number> {
-  return trongKhoa(async (tx) => {
+  const daGiao: [string, string][] = []
+  const n = await trongKhoa(async (tx) => {
     const han = new Date(Date.now() - DISPATCH.acceptMs)
     const canXuLy = await tx.yeuCauSos.findMany({
       where: {
@@ -120,8 +134,15 @@ export async function quetDieuPhoi(): Promise<number> {
     let n = 0
     for (const s of canXuLy) {
       const lyDo = s.trangThai === 'DA_GIAO' ? 'qua-2-phut' : 'cho-doi'
-      if (await giaoLai(tx, s, ctx, null, lyDo)) n++
+      const doiId = await giaoLai(tx, s, ctx, null, lyDo)
+      if (doiId) {
+        n++
+        daGiao.push([s.id, doiId])
+      }
     }
     return n
   })
+  // Chỉ báo khi GIAO ĐƯỢC cho một đội; SOS vẫn chờ thì không báo lại mỗi phút.
+  for (const [sosId, doiId] of daGiao) bao(sosId, doiId)
+  return n
 }

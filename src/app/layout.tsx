@@ -29,6 +29,7 @@ function cauHinhChay() {
     soSms: process.env.SO_SMS_SOS ?? '',
     banDoUrl: process.env.BAN_DO_URL ?? '',
     banDoNguon: process.env.BAN_DO_NGUON ?? '',
+    vapid: process.env.VAPID_PUBLIC ?? '', // khoá CÔNG KHAI của thông báo đẩy (khoá riêng không bao giờ ra trang)
   }
   return `window.__CAU_HINH__=${JSON.stringify(c).replace(/</g, '\u003c')}`
 }

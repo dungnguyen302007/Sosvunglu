@@ -62,7 +62,13 @@ export const dangKyCuuHo = z.object({
 export const dungMaMoi = z.object({ code: maMoi })
 export const doiCuaMa = z.object({ team_id: z.string().uuid() })
 
-export const dangNhap =z.object({ phone: z.string().max(30), password: z.string().max(100) })
+export const dangKyDay = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({ p256dh: z.string().min(10).max(300), auth: z.string().min(8).max(100) }),
+})
+export const huyDangKyDay = z.object({ endpoint: z.string().max(1000) })
+
+export const dangNhap = z.object({ phone: z.string().max(30), password: z.string().max(100) })
 
 export const suaHoSo = z
   .object({

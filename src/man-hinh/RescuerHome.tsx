@@ -9,6 +9,7 @@ import { storage } from '../lib/storage'
 import { OPEN_STATUSES, type Profile, type Sos, type SosStatus, type TeamStatus } from '../types'
 import { ErrorLine, Header, Tabs } from '../components/common'
 import { GpsHelp } from '../components/GpsHelp'
+import { PushButton } from '../components/PushButton'
 import { SosCard } from '../components/SosCard'
 import { isLive, SosMap } from '../components/SosMap'
 
@@ -126,18 +127,6 @@ export function RescuerHome({ profile }: { profile: Profile }) {
     }
   }
 
-  // Quyền THÔNG BÁO xin riêng bằng nút (không xin chung lúc bật ca): bật ca chỉ hỏi MỘT quyền là vị trí.
-  // Máy có app vẽ đè màn hình bị Chrome chặn bảng hỏi quyền — hỏi hai quyền một lúc là kẹt hai lần.
-  const [canHoiThongBao, setCanHoiThongBao] = useState(() => 'Notification' in window && Notification.permission === 'default')
-  const xinThongBao = async () => {
-    try {
-      await Notification.requestPermission()
-    } catch {
-      /* trình duyệt không hỗ trợ */
-    }
-    setCanHoiThongBao('Notification' in window && Notification.permission === 'default')
-  }
-
   const open = useMemo(() => (sos.data ?? []).filter((s) => OPEN_STATUSES.includes(s.status) || s.status === 'cannot_reach'), [sos.data])
   const mine = useMemo(() => sortByPriority(open.filter((s) => s.assigned_team_id && s.assigned_team_id === profile.team_id), now), [open, profile.team_id, now])
   const nearby = useMemo(() => {
@@ -245,11 +234,7 @@ export function RescuerHome({ profile }: { profile: Profile }) {
           đặt máy "không tự tắt màn hình".
         </p>
       )}
-      {onDuty && pos && canHoiThongBao && (
-        <button className="btn btn-outline btn-small" onClick={() => void xinThongBao()}>
-          🔔 Bật thông báo khi có SOS mới (không bắt buộc)
-        </button>
-      )}
+      {onDuty && <PushButton />}
       {onDuty && !pos && !gpsError && <p className="warn-line">Đang lấy vị trí GPS… Nếu máy hỏi quyền định vị, hãy bấm Cho phép.</p>}
       {onDuty && gpsError && <p className="warn-line">Chưa lấy được vị trí nên đội CHƯA hiện trên bản đồ, chưa được giao việc và chưa thấy SOS gần.</p>}
       {gpsDenied && <GpsHelp onRetry={gpsRetry} />}

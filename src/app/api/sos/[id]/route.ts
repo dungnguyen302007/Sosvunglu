@@ -4,6 +4,7 @@ import { db } from '@/lib/may-chu/db'
 import { TRANG_THAI_NGUOC } from '@/lib/may-chu/chuyen-doi'
 import { nhanVienSuaSos } from '@/lib/may-chu/mau'
 import { ghiNhatKy, viTriCuaToi } from '@/lib/may-chu/sos'
+import { baoDoiCoViec } from '@/lib/may-chu/thong-bao'
 import { canNguoi, docJson, KHONG_THAY, LoiNguoiDung, ok, xuLy } from '@/lib/may-chu/tra-loi'
 import { CHO_NHAN, kiemTraViec, TuChoi, type ViecNhanVien } from '@/lib/quyen-sos'
 
@@ -73,6 +74,8 @@ export const PATCH = xuLy(async (req: Request, { params }: Ctx) => {
   }
 
   await db.yeuCauSos.update({ where: { id }, data })
+  // Chỉ huy vừa giao cho một đội MỚI → máy của đội đó kêu.
+  if (viec.loai === 'giao-doi' && f.assigned_team_id && f.assigned_team_id !== sos.doiId) void baoDoiCoViec(f.assigned_team_id, id)
   await ghiNhatKy(id, nguoi.id, viec.loai, { status: f.status ?? null, doiId: f.assigned_team_id ?? null })
   return ok()
 })

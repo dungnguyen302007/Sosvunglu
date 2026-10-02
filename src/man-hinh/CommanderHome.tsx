@@ -7,6 +7,7 @@ import { ROLE_LABEL, STATUS_LABEL, TEAM_STATUS_LABEL, VULNERABLE_LABEL, WATER_LA
 import { PRIORITY_COLOR, priorityScore, sortByPriority } from '../lib/priority'
 import { OPEN_STATUSES, type Invite, type Profile, type RescuerLocation, type Role, type Sos, type SosStatus, type Team } from '../types'
 import { ErrorLine, Header, Sheet, Stat, Tabs } from '../components/common'
+import { PushButton } from '../components/PushButton'
 import { SosCard } from '../components/SosCard'
 import { isLive, SosMap } from '../components/SosMap'
 
@@ -131,6 +132,7 @@ export function CommanderHome({ profile }: { profile: Profile }) {
         <Stat label={`An toàn (${stats.rescuedPeople} người)`} value={stats.rescued} tone="green" />
         <Stat label="Đội đang trực" value={stats.onDuty} tone="blue" />
       </div>
+      <PushButton />
       <ErrorLine error={error ?? sos.error} />
       <Tabs
         value={tab}

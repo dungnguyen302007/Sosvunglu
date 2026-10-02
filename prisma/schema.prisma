@@ -87,6 +87,7 @@ model NguoiDung {
 
   sosDaGui   YeuCauSos[]  @relation("NguoiGui")
   viTri      ViTriCuuHo?
+  thongBao   DangKyThongBao[]
   nhatKy     NhatKySos[]
 
   @@index([vaiTro])
@@ -177,6 +178,20 @@ model ViTriCuuHo {
   lng         Float
   trongCa     Boolean   @default(false)
   capNhatLuc  DateTime  @default(now())
+}
+
+/// Đăng ký nhận thông báo đẩy (web push) — mỗi trình duyệt của cứu hộ / chỉ huy một dòng.
+model DangKyThongBao {
+  id          String    @id @default(uuid())
+  nguoiDungId String
+  nguoiDung   NguoiDung @relation(fields: [nguoiDungId], references: [id])
+  /// Địa chỉ đẩy do trình duyệt cấp (máy chủ Google / Apple / Mozilla)
+  endpoint    String    @unique
+  p256dh      String
+  auth        String
+  taoLuc      DateTime  @default(now())
+
+  @@index([nguoiDungId])
 }
 
 /// Sổ ghi ai làm gì với SOS nào (không sửa, không xoá)

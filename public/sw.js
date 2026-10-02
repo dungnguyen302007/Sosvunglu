@@ -57,3 +57,36 @@ self.addEventListener('fetch', (e) => {
     )
   }
 })
+
+/*
+ * THÔNG BÁO ĐẨY: máy chủ báo "có SOS" cho cứu hộ / chỉ huy → hiện thông báo + rung, kể cả khi app đóng
+ * hoặc màn hình tắt. Tin không chứa tên / SĐT / vị trí (đi qua máy chủ Google, Apple) — bấm vào mới mở app.
+ */
+self.addEventListener('push', (e) => {
+  let d = {}
+  try {
+    d = e.data ? e.data.json() : {}
+  } catch (_) {
+    /* tin không phải JSON */
+  }
+  e.waitUntil(
+    self.registration.showNotification(d.title || '🆘 SOS vùng lũ', {
+      body: d.body || 'Có yêu cầu cứu hộ mới. Mở app để xem.',
+      tag: d.tag || 'sos',
+      renotify: true,
+      requireInteraction: true,
+      vibrate: [400, 200, 400, 200, 400],
+      icon: '/favicon.svg',
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close()
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ds) => {
+      const mo = ds.find((c) => 'focus' in c)
+      return mo ? mo.focus() : self.clients.openWindow('/')
+    }),
+  )
+})

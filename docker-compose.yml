@@ -51,6 +51,10 @@ services:
       SO_HOTLINE: ${SO_HOTLINE:-112}
       SO_SMS_SOS: ${SO_SMS_SOS:-}
       HAN_MUC_SOS_KHACH_NGAY: ${HAN_MUC_SOS_KHACH_NGAY:-100}
+      # Thông báo đẩy (tạo khoá: sh scripts/tao-khoa-thong-bao.sh). Để trống = chưa bật.
+      VAPID_PUBLIC: ${VAPID_PUBLIC:-}
+      VAPID_PRIVATE: ${VAPID_PRIVATE:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       BAN_DO_URL: ${BAN_DO_URL:-}
       BAN_DO_NGUON: ${BAN_DO_NGUON:-}
       TZ: Asia/Ho_Chi_Minh
