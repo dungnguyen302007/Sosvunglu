@@ -30,7 +30,8 @@ npm install
 npm test               # vitest: 60 bài (30 bài quyền SOS + vị trí + khách, 7 bài mã mời)
 npx tsc --noEmit
 npx next build
-# Trên VPS (thư mục dự án): docker compose build · docker compose --profile tools run --rm tools · docker compose up -d
+# Trên VPS (thư mục dự án): git pull --ff-only · docker compose --profile tools build · docker compose --profile tools run --rm tools · docker compose up -d
+#   ⚠️ PHẢI có --profile tools ở bước build: thiếu thì ảnh `tools` không dựng lại → migration / script mới không chạy (dính 02/10/2026).
 # Cấp chỉ huy đầu tiên: docker compose --profile tools run --rm tools npx tsx scripts/cap-quyen.ts <sdt> chi-huy
 ```
 
