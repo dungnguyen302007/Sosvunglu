@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { backend } from '../lib/backend'
-import { beep, lastKnownPosition, vibrate } from '../lib/device'
+import { beep, lastKnownPosition, moTaLoiGps, vibrate } from '../lib/device'
 import { distanceKm, formatKm, type LatLng } from '../lib/geo'
 import { useDispatchLoop, useLive, useNow } from '../lib/hooks'
 import { TEAM_STATUS_LABEL, timeAgo } from '../lib/labels'
@@ -46,7 +46,7 @@ function useDutyTracking(onDuty: boolean, fast: boolean) {
         storage.set('last_pos', { ...next, accuracy: Math.round(p.coords.accuracy), at: new Date().toISOString() })
         setError(null)
       },
-      (e) => setError(`GPS: ${e.message}`),
+      (e) => setError(`GPS lỗi: ${moTaLoiGps(e)}`),
       { enableHighAccuracy: true, maximumAge: 30000 },
     )
     const send = () => {

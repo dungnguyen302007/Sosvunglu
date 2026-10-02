@@ -21,9 +21,20 @@ export const POOR_ACCURACY_M = 150
 
 /** Vì sao lần lấy vị trí gần nhất hỏng — để báo người dùng đúng việc cần làm (null = không lỗi). */
 let lyDoHongGps: 'tu-choi' | 'khong-co' | null = null
+/** Nguyên văn lỗi trình duyệt trả (mã + câu) — hiện kèm để chụp màn hình là biết kẹt ở đâu. */
+let chiTietLoiGps = ''
+
+/** Mô tả lỗi định vị kèm mã: 1 = bị chặn quyền, 2 = không xác định được vị trí, 3 = hết giờ chờ. */
+export function moTaLoiGps(e: GeolocationPositionError): string {
+  return `mã ${e.code}${e.message ? ` — ${e.message}` : ''}`
+}
 
 /** Câu hướng dẫn theo lý do GPS hỏng lần gần nhất. */
 export function loiGpsGanNhat(): string {
+  return `${cauLoiGps()}${chiTietLoiGps ? ` [${chiTietLoiGps}]` : ' [hết 12 giây chưa có toạ độ]'}`
+}
+
+function cauLoiGps(): string {
   if (lyDoHongGps === 'tu-choi')
     return /iPhone|iPad/i.test(navigator.userAgent)
       ? 'Máy đang CHẶN quyền vị trí của trang này. iPhone: Cài đặt → Quyền riêng tư & Bảo mật → Dịch vụ định vị → bật, rồi chọn trình duyệt đang dùng (Trang web Safari) → "Khi dùng ứng dụng". Quay lại trang, tải lại và bấm Cho phép khi được hỏi.'
@@ -44,6 +55,7 @@ export function getPosition(timeoutMs = 12000): Promise<Position | null> {
     }
     if (!('geolocation' in navigator)) return fallback()
     lyDoHongGps = null
+    chiTietLoiGps = ''
 
     let best: Position | null = null
     let finished = false
@@ -74,6 +86,7 @@ export function getPosition(timeoutMs = 12000): Promise<Position | null> {
       },
       (e) => {
         lyDoHongGps = e.code === e.PERMISSION_DENIED ? 'tu-choi' : 'khong-co'
+        chiTietLoiGps = moTaLoiGps(e)
         // Bị chặn quyền thì chờ thêm cũng vô ích → dừng ngay. Lỗi khác (chưa bắt được vệ tinh…) thường
         // chỉ thoáng qua, nhất là trên iPhone → cứ chờ tiếp tới hết giờ, có toạ độ thì vẫn lấy.
         if (e.code === e.PERMISSION_DENIED) finish()
