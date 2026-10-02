@@ -1,9 +1,9 @@
 # HANDOFF — SOS vùng lũ
 
 > Đường dẫn: `D:\Clau Cowork\SOS VÙNG LŨ`
-> Cập nhật: 2026-10-02 (cuối buổi sáng)
-> Git: `g4-viet-lai` @ `91994d0` + tệp này — đã push tới `91994d0`
-> Đang chạy: **https://cuuho.websitekhoinghiep.net** (VPS ACA, Docker riêng — thư mục/IP ở `CLAUDE.local.md`). Bản trên VPS đang ở khoảng `8b252e8`–`4e278a6`; các bản sau đó CHƯA lên (xem mục 4). Bản cũ Vite + Supabase vẫn ở nhánh `main` / GitHub Pages.
+> Cập nhật: 2026-10-02 11:25
+> Git: `g4-viet-lai` @ `2abd1f2` + tệp này — đã push, cây sạch sau commit handoff
+> Đang chạy: **https://cuuho.websitekhoinghiep.net** (VPS ACA, Docker riêng — thư mục/IP ở `CLAUDE.local.md`). Bản trên VPS: chủ dự án đã chạy đủ 4 lệnh của đợt thông báo đẩy (đã migrate + đã tạo khoá VAPID trong `.env` + `up -d`) → đang ở khoảng `834dc70`–`21ac764`; **chưa có** chấm SOS đỏ nháy/vàng (`1809311`) và script một lệnh (`2abd1f2`). Bản cũ Vite + Supabase vẫn ở nhánh `main` / GitHub Pages.
 
 ## 1. Phiên này đã làm gì (02/10)
 - **Mã mời đội** — `src/lib/ma-moi.ts` (+7 bài kiểm), `src/lib/may-chu/ma-moi.ts`, `/api/ma-moi` (+`/thu-hoi`, `/dung`), `/api/dang-ky` nhận `ma_moi`, bảng `MaMoi`; `InviteBox` ở `CommanderHome.tsx`; link `/?moi=MÃ`.
@@ -17,6 +17,8 @@
 - **Gõ địa chỉ** — `/api/tim-dia-chi` (Nominatim/OSM qua máy chủ, 1 lượt/giây, có cất) + ô tìm trong `LocationPicker`. Chỉ tới mức thôn / đường, không có gợi ý khi gõ.
 - **Nút huỷ SOS** đổi thành dòng chữ xám cuối trang kèm câu nhắc (trước là nút xanh ✅ dễ nhầm).
 - **Thông báo đẩy** — `src/lib/may-chu/thong-bao.ts`, `/api/thong-bao`, bảng `DangKyThongBao`, `public/sw.js` (push + click), `PushButton.tsx`, `scripts/tao-khoa-thong-bao.sh`. Báo đội khi được giao; báo chỉ huy + cứu hộ 10 km khi SOS chưa có đội.
+- **Chấm SOS theo tình trạng** — đỏ nháy = chưa đội nào NHẬN, vàng = đã có đội nhận, dấu ! = rất nguy cấp (`sosTaken`, `SOS_COLOR` trong `SosMap.tsx`).
+- **Lên bản một lệnh** — `scripts/len-ban-moi.sh` (pull → build app + tools → sao lưu + migration nếu có → khoá VAPID → up → chờ healthy). Đã đăng bảng tin chung nhóm `crm` 02/10 10:37.
 - Script VPS: `scripts/dat-lai-mat-khau.ts`, `scripts/xem-vi-tri.ts` (soi vị trí, chỉ đọc).
 - Kiểm: `npm test` 60/60, thử ngược 3 luật, `tsc` sạch, `next build` qua. Máy này không có Docker/Postgres → mọi thứ chạy thật lần đầu trên VPS.
 
@@ -26,6 +28,7 @@
 - Dân không cần đăng ký mới bấm được SOS; màn đầu chỉ có nút SOS.
 - Hạn mức SOS khẩn 100/ngày trong giai đoạn thử.
 - Làm thông báo đẩy + giữ sáng màn hình (cả hai).
+- Màu chấm SOS = tình trạng nhận việc (không phải mức ưu tiên); lên VPS bằng một lệnh.
 - Cũ: khuôn Greencie, Docker riêng trên VPS ACA, bỏ Google Maps, giao diện chép chưa coi là xong.
 
 ## 3. Đã thử và LOẠI
@@ -39,9 +42,7 @@
 - (cũ) Tự cài Supabase; giữ Vite + Supabase cloud; "realtime" giữ kết nối mở.
 
 ## 4. Đang làm dở
-- **Lên VPS bản mới nhất** (có migration `20261002020000_thong_bao_day` + cần tạo khoá VAPID), trong thư mục dự án trên VPS:
-  **một lệnh**: `git pull --ff-only; sh scripts/len-ban-moi.sh` (lần đầu cần `git pull` trước để có script; các lần sau chỉ `sh scripts/len-ban-moi.sh`). Script chưa chạy thật lần nào.
-  Phiên 02/10 Claude bị chặn ssh → chủ dự án chạy tay.
+- **Lên VPS 2 bản cuối** (`1809311` chấm đỏ nháy/vàng, `2abd1f2` script): lần đầu `git pull --ff-only; sh scripts/len-ban-moi.sh --lai`, từ đó về sau chỉ `sh scripts/len-ban-moi.sh`. Script CHƯA chạy thật lần nào — lần đầu xem kỹ kết quả. Claude bị chặn ssh ở phiên 02/10 → chủ dự án chạy.
 - **Thông báo đẩy chưa thử trên máy thật** (Android Chrome; iPhone phải "Thêm vào MH chính").
 - **Máy cứu hộ Android của chủ dự án**: Chrome đang ghi "từ chối" quyền vị trí (mã 1) → mở lại theo thẻ hướng dẫn; chưa xác nhận xuồng đã hiện trên bản đồ chỉ huy.
 - Số `0702760399` là CHI_HUY; đang đặt lại mật khẩu bằng `dat-lai-mat-khau.ts` (chủ dự án tự gõ) — chưa rõ đã xong.
@@ -56,7 +57,7 @@
 - Kho GitHub công khai hay riêng tư? Môi trường thử riêng?
 
 ## 6. Bước tiếp theo
-1. Lên VPS bản mới nhất (mục 4), bật thông báo đẩy trên máy cứu hộ + chỉ huy, thử: dân bấm SOS → máy đội kêu khi tắt màn hình.
+1. Lên VPS 2 bản cuối bằng script một lệnh (mục 4), bật thông báo đẩy trên máy cứu hộ + chỉ huy, thử: dân bấm SOS → máy đội kêu khi tắt màn hình.
 2. Thử trọn vòng 3 máy: tạo đội → mã mời → bật ca (xuồng hiện) → SOS khẩn → đội nhận → dân thấy xuồng → cứu xong; thử tắt ca khi còn việc dở; thử gõ địa chỉ thật ở vùng triển khai.
 3. Chủ dự án quay lại các câu ở mục 5 (phân loại mức khẩn, Goong).
 4. Treo khác: Drive mã hoá cho sao lưu, CRM-CẢNH gắn tổng quan + két, gộp `g4-viet-lai` vào `main` + tắt GitHub Pages; tốc độ lên bản (GitHub dựng sẵn) và mở lại ssh cho Claude.
