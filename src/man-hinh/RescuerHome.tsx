@@ -8,6 +8,7 @@ import { sortByPriority } from '../lib/priority'
 import { storage } from '../lib/storage'
 import { OPEN_STATUSES, type Profile, type Sos, type SosStatus, type TeamStatus } from '../types'
 import { ErrorLine, Header, Tabs } from '../components/common'
+import { GpsHelp } from '../components/GpsHelp'
 import { SosCard } from '../components/SosCard'
 import { isLive, SosMap } from '../components/SosMap'
 
@@ -22,6 +23,8 @@ function useDutyTracking(onDuty: boolean, fast: boolean) {
   const [pos, setPos] = useState<LatLng | null>(() => lastKnownPosition())
   const latest = useRef<LatLng | null>(pos)
   const [error, setError] = useState<string | null>(null)
+  const [denied, setDenied] = useState(false)
+  const [lan, setLan] = useState(0)
 
   useEffect(() => {
     if (!onDuty) return
@@ -45,8 +48,12 @@ function useDutyTracking(onDuty: boolean, fast: boolean) {
         }
         storage.set('last_pos', { ...next, accuracy: Math.round(p.coords.accuracy), at: new Date().toISOString() })
         setError(null)
+        setDenied(false)
       },
-      (e) => setError(`GPS lỗi: ${moTaLoiGps(e)}`),
+      (e) => {
+        setError(`GPS lỗi: ${moTaLoiGps(e)}`)
+        setDenied(e.code === e.PERMISSION_DENIED)
+      },
       { enableHighAccuracy: true, maximumAge: 30000 },
     )
     const send = () => {
@@ -62,9 +69,14 @@ function useDutyTracking(onDuty: boolean, fast: boolean) {
       window.clearTimeout(first)
       window.clearInterval(timer)
     }
-  }, [onDuty, fast])
+  }, [onDuty, fast, lan])
 
-  return { pos, error }
+  /** Người dùng vừa mở lại quyền → xin vị trí lại từ đầu. */
+  const retry = () => {
+    setError(null)
+    setLan((n) => n + 1)
+  }
+  return { pos, error, denied: onDuty && denied, retry }
 }
 
 const NEXT_STEP: Partial<Record<SosStatus, { status: SosStatus; label: string }>> = {
@@ -78,7 +90,7 @@ export function RescuerHome({ profile }: { profile: Profile }) {
   const [onDuty, setOnDuty] = useState(() => storage.get<boolean>('on_duty') ?? false)
   const sos = useLive(() => backend.listSos(), 20000)
   const dangDiCuu = (sos.data ?? []).some((s) => s.assigned_team_id === profile.team_id && s.status === 'on_way')
-  const { pos, error: gpsError } = useDutyTracking(onDuty, dangDiCuu)
+  const { pos, error: gpsError, denied: gpsDenied, retry: gpsRetry } = useDutyTracking(onDuty, dangDiCuu)
   // Đồng đội + đội khác trong 10 km (chỉ người đang trong ca) — máy chủ lọc.
   const locs = useLive(() => backend.listLocations(), 20000)
   const [notice, setNotice] = useState<string | null>(null)
@@ -231,9 +243,8 @@ export function RescuerHome({ profile }: { profile: Profile }) {
         </button>
       )}
       {onDuty && !pos && !gpsError && <p className="warn-line">Đang lấy vị trí GPS… Nếu máy hỏi quyền định vị, hãy bấm Cho phép.</p>}
-      {onDuty && gpsError && (
-        <p className="warn-line">Chưa lấy được vị trí nên đội CHƯA hiện trên bản đồ và chưa thấy SOS gần. Bật định vị cho trình duyệt rồi tắt / bật lại ca.</p>
-      )}
+      {onDuty && gpsError && <p className="warn-line">Chưa lấy được vị trí nên đội CHƯA hiện trên bản đồ, chưa được giao việc và chưa thấy SOS gần.</p>}
+      {gpsDenied && <GpsHelp onRetry={gpsRetry} />}
       <ErrorLine error={gpsError} />
       <ErrorLine error={error ?? sos.error} />
       <Tabs

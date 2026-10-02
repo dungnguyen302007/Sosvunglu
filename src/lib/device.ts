@@ -29,6 +29,40 @@ export function moTaLoiGps(e: GeolocationPositionError): string {
   return `mã ${e.code}${e.message ? ` — ${e.message}` : ''}`
 }
 
+/** Lần lấy vị trí gần nhất hỏng vì bị CHẶN QUYỀN (không phải do sóng) → cần hiện hướng dẫn mở quyền. */
+export function gpsDangBiChan(): boolean {
+  return lyDoHongGps === 'tu-choi'
+}
+
+/** Các bước mở lại quyền vị trí, theo loại máy đang dùng. */
+export function huongDanMoQuyenViTri(): { may: string; buoc: string[] } {
+  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
+  if (/iPhone|iPad/i.test(ua))
+    return {
+      may: 'iPhone',
+      buoc: [
+        'Mở Cài đặt của máy → Quyền riêng tư & Bảo mật → Dịch vụ định vị → BẬT.',
+        'Cũng trong đó, chọn trình duyệt đang dùng (Trang web Safari / Chrome) → "Khi dùng ứng dụng", bật "Vị trí chính xác".',
+        'Quay lại trang này, bấm nút bên trái thanh địa chỉ → Cài đặt trang web → Vị trí → Cho phép.',
+        'Bấm nút "thử lại" bên dưới; máy hỏi thì chọn Cho phép.',
+      ],
+    }
+  if (/Android/i.test(ua))
+    return {
+      may: 'Android',
+      buoc: [
+        'Bấm biểu tượng bên TRÁI thanh địa chỉ (cạnh tên trang) → Quyền → Vị trí → Cho phép. Không thấy dòng Vị trí thì bấm "Đặt lại quyền".',
+        'Máy báo "không thể yêu cầu cấp quyền": tắt các app đang nổi trên màn hình (bong bóng chat, lọc ánh sáng, quay màn hình) rồi làm lại.',
+        'Vẫn không được: Cài đặt máy → Ứng dụng → Chrome → Quyền → Vị trí → "Chỉ cho phép khi dùng ứng dụng".',
+        'Bấm nút "thử lại" bên dưới; máy hỏi thì chọn "Cho phép mỗi khi truy cập trang web".',
+      ],
+    }
+  return {
+    may: 'máy tính',
+    buoc: ['Bấm biểu tượng ổ khoá / thanh trượt bên trái thanh địa chỉ → Vị trí → Cho phép.', 'Tải lại trang rồi bấm nút "thử lại" bên dưới.'],
+  }
+}
+
 /** Câu hướng dẫn theo lý do GPS hỏng lần gần nhất. */
 export function loiGpsGanNhat(): string {
   return `${cauLoiGps()}${chiTietLoiGps ? ` [${chiTietLoiGps}]` : ' [hết 12 giây chưa có toạ độ]'}`

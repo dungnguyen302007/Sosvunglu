@@ -964,3 +964,10 @@ legend {
   color: #111;
   border-color: #888;
 }
+
+.gps-help ol {
+  margin: 8px 0 12px;
+  padding-left: 22px;
+  display: grid;
+  gap: 6px;
+}

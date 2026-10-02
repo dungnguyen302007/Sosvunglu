@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { backend } from '../lib/backend'
-import { getBattery, getPosition, loiGpsGanNhat, POOR_ACCURACY_M } from '../lib/device'
+import { getBattery, getPosition, gpsDangBiChan, loiGpsGanNhat, POOR_ACCURACY_M } from '../lib/device'
 import { distanceKm, formatKm, type LatLng } from '../lib/geo'
 import { useLive, useNow, useSosQueue } from '../lib/hooks'
 import { boMaKhoiLink, maTrongLink } from '../lib/link-moi'
@@ -9,6 +9,7 @@ import type { CitizenSosPatch, Profile, Sos, Vulnerable, WaterLevel } from '../t
 import { CallButton, ErrorLine, Header, PendingCard, Sheet } from '../components/common'
 import { isLive, LocationPicker, SosMap } from '../components/SosMap'
 import { JoinTeam } from '../components/JoinTeam'
+import { GpsHelp } from '../components/GpsHelp'
 import { HomeLocation } from '../components/HomeLocation'
 import { SosTrigger } from '../components/SosTrigger'
 import { Stepper } from './AuthPage'
@@ -137,6 +138,7 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fixing, setFixing] = useState(false)
+  const [gpsChan, setGpsChan] = useState(false)
   const [picked, setPicked] = useState<LatLng | null>(null)
   const poor = sos.accuracy == null || sos.accuracy > POOR_ACCURACY_M
   const now = useNow(10000)
@@ -164,7 +166,9 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
     const [pos, battery] = await Promise.all([getPosition(), getBattery()])
     setBusy(false)
     // Vị trí CŨ lưu trong máy (stale) không phải là "đã cập nhật" — báo rõ thay vì lặng lẽ gửi lại số cũ.
+    setGpsChan(false)
     if (pos && !pos.stale) await patch({ lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, battery })
+    else if (gpsDangBiChan()) setGpsChan(true)
     else setError(loiGpsGanNhat())
   }
 
@@ -236,6 +240,7 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
             Lưu vị trí này
           </button>
         </Sheet>
+        {gpsChan && <GpsHelp onRetry={() => void refreshLocation()} />}
         <ErrorLine error={error} />
       </div>
 

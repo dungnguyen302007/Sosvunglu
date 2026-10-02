@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { getBattery, getPosition, loiGpsGanNhat, POOR_ACCURACY_M, type Position } from '../lib/device'
+import { getBattery, getPosition, gpsDangBiChan, loiGpsGanNhat, POOR_ACCURACY_M, type Position } from '../lib/device'
 import type { LatLng } from '../lib/geo'
 import type { NewSos } from '../types'
 import { Sheet } from './common'
+import { GpsHelp } from './GpsHelp'
 import { SosButton } from './SosButton'
 import { LocationPicker } from './SosMap'
 
@@ -41,18 +42,29 @@ export function SosTrigger({ peopleCount, onReady, disabled }: { peopleCount: nu
       {busy && <p className="center muted">Đang lấy vị trí GPS…</p>}
       {staleNote && <p className="center muted">{staleNote}</p>}
       <Sheet open={picking} onClose={() => setPicking(false)} title="Không lấy được GPS">
-        <p className="error small">{loiGpsGanNhat()}</p>
-        <button
-          type="button"
-          className="btn btn-outline btn-block"
-          disabled={busy}
-          onClick={() => {
-            setPicking(false)
-            void trigger()
-          }}
-        >
-          🔄 Thử lấy GPS lại
-        </button>
+        {gpsDangBiChan() ? (
+          <GpsHelp
+            onRetry={() => {
+              setPicking(false)
+              void trigger()
+            }}
+          />
+        ) : (
+          <>
+            <p className="error small">{loiGpsGanNhat()}</p>
+            <button
+              type="button"
+              className="btn btn-outline btn-block"
+              disabled={busy}
+              onClick={() => {
+                setPicking(false)
+                void trigger()
+              }}
+            >
+              🔄 Thử lấy GPS lại
+            </button>
+          </>
+        )}
         <p>
           <b>Hoặc gửi ngay:</b> chạm lên bản đồ vào chỗ bạn đang ở, rồi bấm Gửi.
         </p>
