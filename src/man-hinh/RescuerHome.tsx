@@ -111,7 +111,18 @@ export function RescuerHome({ profile }: { profile: Profile }) {
         setError(`Chưa báo được tắt ca cho trung tâm (${e instanceof Error ? e.message : String(e)}). Có sóng hãy bật rồi tắt ca lại.`)
       }
     }
-    if (next && 'Notification' in window && Notification.permission === 'default') void Notification.requestPermission()
+  }
+
+  // Quyền THÔNG BÁO xin riêng bằng nút (không xin chung lúc bật ca): bật ca chỉ hỏi MỘT quyền là vị trí.
+  // Máy có app vẽ đè màn hình bị Chrome chặn bảng hỏi quyền — hỏi hai quyền một lúc là kẹt hai lần.
+  const [canHoiThongBao, setCanHoiThongBao] = useState(() => 'Notification' in window && Notification.permission === 'default')
+  const xinThongBao = async () => {
+    try {
+      await Notification.requestPermission()
+    } catch {
+      /* trình duyệt không hỗ trợ */
+    }
+    setCanHoiThongBao('Notification' in window && Notification.permission === 'default')
   }
 
   const open = useMemo(() => (sos.data ?? []).filter((s) => OPEN_STATUSES.includes(s.status) || s.status === 'cannot_reach'), [sos.data])
@@ -214,6 +225,11 @@ export function RescuerHome({ profile }: { profile: Profile }) {
         )}
       </div>
       {notice && <p className="ok">{notice}</p>}
+      {onDuty && pos && canHoiThongBao && (
+        <button className="btn btn-outline btn-small" onClick={() => void xinThongBao()}>
+          🔔 Bật thông báo khi có SOS mới (không bắt buộc)
+        </button>
+      )}
       {onDuty && !pos && !gpsError && <p className="warn-line">Đang lấy vị trí GPS… Nếu máy hỏi quyền định vị, hãy bấm Cho phép.</p>}
       {onDuty && gpsError && (
         <p className="warn-line">Chưa lấy được vị trí nên đội CHƯA hiện trên bản đồ và chưa thấy SOS gần. Bật định vị cho trình duyệt rồi tắt / bật lại ca.</p>
