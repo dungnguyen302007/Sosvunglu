@@ -1,4 +1,5 @@
 import type {
+  AddressHit,
   CitizenSosPatch,
   GuestSosInput,
   GuestSosPatch,
@@ -90,6 +91,9 @@ export interface Backend {
   listLocations(): Promise<RescuerLocation[]>
   /** Tắt ca (nghỉ). Trả số việc đang dở đã trả về trung tâm vì đội không còn ai trực. */
   endDuty(): Promise<number>
+
+  /** Tìm toạ độ theo địa chỉ gõ tay (ưu tiên quanh `near`). Không cần đăng nhập. */
+  searchAddress(q: string, near?: { lat: number; lng: number } | null): Promise<AddressHit[]>
 
   /** Gọi cb mỗi khi SOS / vị trí / đội thay đổi. Trả về hàm hủy đăng ký. */
   subscribe(cb: () => void): () => void

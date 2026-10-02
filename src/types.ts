@@ -116,6 +116,13 @@ export interface Invite {
   used: number
 }
 
+/** Một kết quả tìm địa chỉ gõ tay. */
+export interface AddressHit {
+  name: string
+  lat: number
+  lng: number
+}
+
 export interface NewSos {
   lat: number
   lng: number

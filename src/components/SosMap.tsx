@@ -1,12 +1,13 @@
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Fragment, useMemo, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import { Circle, CircleMarker, LayersControl, MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { useEffect } from 'react'
+import { backend } from '../lib/backend'
 import { cauHinh } from '../lib/config'
 import type { LatLng } from '../lib/geo'
 import { PRIORITY_COLOR, priorityLevel, priorityScore } from '../lib/priority'
-import type { Profile, RescuerLocation, Sos } from '../types'
+import type { AddressHit, Profile, RescuerLocation, Sos } from '../types'
 
 const DEFAULT_CENTER: LatLng = { lat: 16.4637, lng: 107.5909 } // Huế
 
@@ -229,13 +230,93 @@ function ClickToPick({ onPick }: { onPick: (p: LatLng) => void }) {
   return null
 }
 
-/** Chọn vị trí bằng cách chạm lên bản đồ (khi không lấy được GPS). */
+/** Đưa bản đồ tới điểm vừa tìm được theo địa chỉ. */
+function FlyTo({ to }: { to: LatLng | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (to) map.setView([to.lat, to.lng], 17)
+  }, [to, map])
+  return null
+}
+
+/**
+ * Chọn vị trí: GÕ ĐỊA CHỈ để bản đồ nhảy tới đó, rồi chạm lên bản đồ chỉnh cho đúng nhà
+ * (dùng khi không lấy được GPS / GPS lệch).
+ */
 export function LocationPicker({ value, onPick }: { value: LatLng | null; onPick: (p: LatLng) => void }) {
+  const [q, setQ] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [hits, setHits] = useState<AddressHit[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [flyTo, setFlyTo] = useState<LatLng | null>(null)
+
+  const search = async () => {
+    if (q.trim().length < 3) return
+    setBusy(true)
+    setError(null)
+    try {
+      const ds = await backend.searchAddress(q.trim(), value)
+      setHits(ds)
+      if (ds.length === 1) choose(ds[0])
+    } catch (err) {
+      setHits(null)
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const choose = (h: AddressHit) => {
+    const p = { lat: h.lat, lng: h.lng }
+    onPick(p)
+    setFlyTo(p)
+    setHits(null)
+  }
+
   return (
-    <MapContainer center={value ?? DEFAULT_CENTER} zoom={value ? 16 : 12} style={{ height: '50vh', width: '100%' }} className="map" zoomControl={false}>
+    <div className="picker">
+      {/* KHÔNG dùng <form>: bảng này có khi nằm trong form đăng ký — form lồng form là bấm Tìm thành gửi form ngoài. */}
+      <div className="picker-search">
+        <input
+          type="search"
+          enterKeyHint="search"
+          placeholder="Gõ địa chỉ: thôn, xã, đường, tỉnh…"
+          aria-label="Tìm theo địa chỉ"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            e.preventDefault()
+            void search()
+          }}
+        />
+        <button type="button" className="btn btn-primary" disabled={busy || q.trim().length < 3} onClick={() => void search()}>
+          {busy ? '…' : '🔍 Tìm'}
+        </button>
+      </div>
+      {error && <p className="error small">{error}</p>}
+      {hits && hits.length === 0 && <p className="muted small">Không tìm thấy. Thử gõ ngắn hơn (tên xã + tỉnh), rồi chạm lên bản đồ.</p>}
+      {hits && hits.length > 1 && (
+        <div className="picker-hits">
+          {hits.map((h) => (
+            <button type="button" key={`${h.lat},${h.lng}`} onClick={() => choose(h)}>
+              📍 {h.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {flyTo && <p className="muted small">Bản đồ đã tới địa chỉ vừa tìm. Phóng to và chạm đúng nhà bạn để chỉnh.</p>}
+      <LocationPickerMap value={value} onPick={onPick} flyTo={flyTo} />
+    </div>
+  )
+}
+
+function LocationPickerMap({ value, onPick, flyTo }: { value: LatLng | null; onPick: (p: LatLng) => void; flyTo: LatLng | null }) {
+  return (
+    <MapContainer center={value ?? DEFAULT_CENTER} zoom={value ? 16 : 12} style={{ height: '45vh', width: '100%' }} className="map" zoomControl={false}>
       <BaseLayers />
       <ZoomControl position="bottomright" />
       <ClickToPick onPick={onPick} />
+      <FlyTo to={flyTo} />
       {value && <CircleMarker center={[value.lat, value.lng]} radius={12} pathOptions={{ color: '#fff', weight: 3, fillColor: '#ff2d2d', fillOpacity: 1 }} />}
     </MapContainer>
   )

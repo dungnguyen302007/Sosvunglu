@@ -514,13 +514,16 @@ function GuestSos() {
                 <Stepper value={g.people_count} onChange={(v) => void patch({ people_count: v })} />
               </div>
               <ErrorLine error={error} />
+            </div>
+            <div className="cancel-zone">
+              <p className="muted small">Đội cứu hộ ĐÃ nhận tin của bạn — không cần bấm gì thêm. Chỉ bấm nút dưới khi bạn KHÔNG cần cứu nữa.</p>
               <button
-                className="btn btn-ok btn-block"
+                className="btn-link"
                 onClick={() => {
-                  if (confirm('Bạn đã an toàn và muốn hủy yêu cầu cứu hộ?')) void patch({ status: 'cancelled' })
+                  if (confirm('HỦY yêu cầu cứu hộ?\n\nĐội cứu hộ sẽ KHÔNG tới nữa. Chỉ bấm OK nếu bạn đã thật sự an toàn.')) void patch({ status: 'cancelled' })
                 }}
               >
-                ✅ Tôi đã an toàn — hủy SOS
+                ✖ Hủy yêu cầu cứu hộ (tôi đã an toàn, không cần cứu nữa)
               </button>
             </div>
           </>

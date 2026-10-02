@@ -971,3 +971,45 @@ legend {
   display: grid;
   gap: 6px;
 }
+
+/* Tìm vị trí theo địa chỉ + vùng huỷ SOS (02/10/2026) */
+.picker {
+  display: grid;
+  gap: 8px;
+}
+.picker-search {
+  display: flex;
+  gap: 8px;
+}
+.picker-search input {
+  flex: 1;
+  min-width: 0;
+}
+.picker-search .btn {
+  flex: none;
+}
+.picker-hits {
+  display: grid;
+  gap: 6px;
+  max-height: 30vh;
+  overflow: auto;
+}
+.picker-hits button {
+  font: inherit;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--blue);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.cancel-zone {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--muted);
+  text-align: center;
+}
+.cancel-zone .btn-link {
+  margin-top: 4px;
+}

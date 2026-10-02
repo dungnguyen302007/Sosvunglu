@@ -246,15 +246,18 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
 
       <p className="muted small center">Để máy yên, bật tiết kiệm pin. Mở lại app mỗi 15–30 phút để xem tình hình.</p>
       <CallButton className="btn btn-outline btn-block" />
-      <button
-        className="btn btn-ok btn-block"
-        disabled={busy}
-        onClick={() => {
-          if (confirm('Bạn đã an toàn và muốn hủy yêu cầu cứu hộ?')) void patch({ status: 'cancelled' })
-        }}
-      >
-        ✅ Tôi đã an toàn — hủy SOS
-      </button>
+      <div className="cancel-zone">
+        <p className="muted small">Đội cứu hộ ĐÃ nhận tin của bạn — không cần bấm gì thêm. Chỉ bấm nút dưới khi bạn KHÔNG cần cứu nữa.</p>
+        <button
+          className="btn-link"
+          disabled={busy}
+          onClick={() => {
+            if (confirm('HỦY yêu cầu cứu hộ?\n\nĐội cứu hộ sẽ KHÔNG tới nữa. Chỉ bấm OK nếu bạn đã thật sự an toàn.')) void patch({ status: 'cancelled' })
+          }}
+        >
+          ✖ Hủy yêu cầu cứu hộ (tôi đã an toàn, không cần cứu nữa)
+        </button>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import type { Backend, GuestStatus } from './types'
-import type { Invite, Profile, RescuerLocation, Sos, Team } from '../../types'
+import type { AddressHit, Invite, Profile, RescuerLocation, Sos, Team } from '../../types'
 
 /**
  * Lớp dữ liệu gọi máy chủ Next.js của chính app (thay bản Supabase + bản demo của bản Vite).
@@ -140,6 +140,8 @@ export const apiBackend: Backend = {
   },
   listLocations: () => goi<RescuerLocation[]>('/api/vi-tri'),
   endDuty: async () => (await goi<{ tra_viec: number }>('/api/ca-truc', { method: 'POST' })).tra_viec,
+
+  searchAddress: (q, near) => goi<AddressHit[]>('/api/tim-dia-chi', { method: 'POST', json: { q, near: near ?? null } }),
 
   subscribe(cb) {
     nguoiNghe.add(cb)
