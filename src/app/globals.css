@@ -949,3 +949,12 @@ legend {
 .boat-line {
   font-size: 1.05rem;
 }
+
+.auth-foot {
+  text-align: center;
+  margin: 18px 0 8px;
+}
+.auth-foot .btn-link {
+  display: inline;
+  padding: 0;
+}

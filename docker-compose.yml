@@ -50,6 +50,7 @@ services:
       KHOA_TAC_VU: ${KHOA_TAC_VU}
       SO_HOTLINE: ${SO_HOTLINE:-112}
       SO_SMS_SOS: ${SO_SMS_SOS:-}
+      HAN_MUC_SOS_KHACH_NGAY: ${HAN_MUC_SOS_KHACH_NGAY:-100}
       BAN_DO_URL: ${BAN_DO_URL:-}
       BAN_DO_NGUON: ${BAN_DO_NGUON:-}
       TZ: Asia/Ho_Chi_Minh

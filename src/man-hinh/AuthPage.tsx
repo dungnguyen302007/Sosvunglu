@@ -26,18 +26,39 @@ export function AuthPage() {
         <h1>SOS vùng lũ</h1>
         <p className="muted">Một nút bấm — đội cứu hộ biết bạn ở đâu.</p>
       </div>
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        items={[
-          { value: 'guest', label: '🆘 SOS khẩn' },
-          { value: 'login', label: 'Đăng nhập' },
-          { value: 'register', label: 'Đăng ký' },
-        ]}
-      />
-      {tab === 'login' && <LoginForm />}
-      {tab === 'register' && <Register maMoi={maMoi} />}
-      {tab === 'guest' && <GuestSos />}
+      {/* Màn mở đầu CHỈ có nút SOS — người dân không phải chọn gì. Đăng nhập / đăng ký (cứu hộ, chỉ huy,
+          người dân muốn khai trước) nằm sau một dòng chữ nhỏ ở cuối trang. */}
+      {tab === 'guest' ? (
+        <>
+          <GuestSos />
+          <p className="auth-foot muted small">
+            Cứu hộ / đã có tài khoản?{' '}
+            <button type="button" className="btn-link" onClick={() => setTab('login')}>
+              Đăng nhập
+            </button>
+            {' · '}
+            <button type="button" className="btn-link" onClick={() => setTab('register')}>
+              Đăng ký trước mùa lũ
+            </button>
+          </p>
+        </>
+      ) : (
+        <>
+          <button type="button" className="btn btn-danger btn-block" onClick={() => setTab('guest')}>
+            🆘 Cần cứu ngay? Về nút SOS khẩn
+          </button>
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            items={[
+              { value: 'login', label: 'Đăng nhập' },
+              { value: 'register', label: 'Đăng ký' },
+            ]}
+          />
+          {tab === 'login' && <LoginForm />}
+          {tab === 'register' && <Register maMoi={maMoi} />}
+        </>
+      )}
     </div>
   )
 }
