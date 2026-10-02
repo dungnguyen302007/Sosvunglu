@@ -29,11 +29,20 @@ function useDutyTracking(onDuty: boolean, fast: boolean) {
       setError('Máy không hỗ trợ GPS')
       return
     }
+    // Vừa bật ca: có toạ độ GPS ĐẦU TIÊN là gửi ngay, không chờ nhịp 60 giây — không thì cả phút đầu
+    // chỉ huy chưa thấy xuồng, cứu hộ chưa thấy SOS gần mình (máy chủ lọc theo vị trí đã gửi).
+    let daGui = false
     const watch = navigator.geolocation.watchPosition(
       (p) => {
         const next = { lat: p.coords.latitude, lng: p.coords.longitude }
         latest.current = next
         setPos(next)
+        if (!daGui) {
+          daGui = true
+          backend.upsertMyLocation(next.lat, next.lng, true).catch(() => {
+            daGui = false
+          })
+        }
         storage.set('last_pos', { ...next, accuracy: Math.round(p.coords.accuracy), at: new Date().toISOString() })
         setError(null)
       },
@@ -42,7 +51,9 @@ function useDutyTracking(onDuty: boolean, fast: boolean) {
     )
     const send = () => {
       const p = latest.current
-      if (p) backend.upsertMyLocation(p.lat, p.lng, true).catch(() => {})
+      if (!p) return
+      daGui = true
+      backend.upsertMyLocation(p.lat, p.lng, true).catch(() => {})
     }
     const first = window.setTimeout(send, 3000)
     const timer = window.setInterval(send, fast ? SEND_FAST_MS : SEND_EVERY_MS)
@@ -203,6 +214,10 @@ export function RescuerHome({ profile }: { profile: Profile }) {
         )}
       </div>
       {notice && <p className="ok">{notice}</p>}
+      {onDuty && !pos && !gpsError && <p className="warn-line">Đang lấy vị trí GPS… Nếu máy hỏi quyền định vị, hãy bấm Cho phép.</p>}
+      {onDuty && gpsError && (
+        <p className="warn-line">Chưa lấy được vị trí nên đội CHƯA hiện trên bản đồ và chưa thấy SOS gần. Bật định vị cho trình duyệt rồi tắt / bật lại ca.</p>
+      )}
       <ErrorLine error={gpsError} />
       <ErrorLine error={error ?? sos.error} />
       <Tabs
