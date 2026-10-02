@@ -4,12 +4,12 @@ import { formatKm, isValidPhone, nearestTeams } from '../lib/geo'
 import { useDispatchLoop, useLive, useNow } from '../lib/hooks'
 import { linkMoi } from '../lib/link-moi'
 import { ROLE_LABEL, STATUS_LABEL, TEAM_STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/labels'
-import { PRIORITY_COLOR, priorityScore, sortByPriority } from '../lib/priority'
+import { priorityScore, sortByPriority } from '../lib/priority'
 import { OPEN_STATUSES, type Invite, type Profile, type RescuerLocation, type Role, type Sos, type SosStatus, type Team } from '../types'
 import { ErrorLine, Header, Sheet, Stat, Tabs } from '../components/common'
 import { PushButton } from '../components/PushButton'
 import { SosCard } from '../components/SosCard'
-import { isLive, SosMap } from '../components/SosMap'
+import { isLive, SOS_COLOR, SosMap } from '../components/SosMap'
 
 type Filter = 'todo' | 'active' | 'done' | 'all'
 const ACTIVE: SosStatus[] = ['assigned', 'on_way', 'arrived']
@@ -155,10 +155,9 @@ export function CommanderHome({ profile }: { profile: Profile }) {
               Cứu hộ đã tắt ca (xám)
             </label>
             <span>
-              <i className="legend-dot" style={{ background: PRIORITY_COLOR.critical }} />
-              nguy cấp <i className="legend-dot" style={{ background: PRIORITY_COLOR.high }} />
-              nguy hiểm <i className="legend-dot" style={{ background: PRIORITY_COLOR.normal }} />
-              cần cứu · mỗi hình người = 1 người · 🚤 {locList.filter((l) => isLive(l, now)).length} cứu hộ đang trực
+              <i className="legend-dot" style={{ background: SOS_COLOR.waiting }} />
+              đỏ nháy = chưa đội nào nhận <i className="legend-dot" style={{ background: SOS_COLOR.taken }} />
+              vàng = đã có đội nhận · dấu ! = rất nguy cấp · mỗi hình người = 1 người · 🚤 {locList.filter((l) => isLive(l, now)).length} cứu hộ đang trực
             </span>
           </div>
           {locList.filter((l) => isLive(l, now)).length === 0 && (

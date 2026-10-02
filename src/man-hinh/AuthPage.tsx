@@ -335,7 +335,7 @@ function guestAsSos(id: string, st: GuestStatus): Sos {
     status: st.status,
     assigned_team_id: st.accepted ? 'doi' : null,
     assigned_at: null,
-    accepted_at: null,
+    accepted_at: st.accepted ? st.sos.created_at : null,
     tried_team_ids: [],
     created_at: st.sos.created_at,
     updated_at: st.sos.created_at,

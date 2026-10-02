@@ -734,8 +734,44 @@ legend {
   text-align: center;
   border: 1px solid #fff;
 }
-.sos-pin.assigned {
-  border-width: 4px;
+.sos-pin i {
+  position: absolute;
+  top: -9px;
+  left: -9px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  color: #d00000;
+  font: 900 15px/20px system-ui, sans-serif;
+  font-style: normal;
+  text-align: center;
+  border: 1px solid #d00000;
+}
+/* Chưa đội nào nhận: đỏ, chớp + toả vòng. Đã có đội nhận: vàng, đứng yên. */
+.sos-pin.waiting {
+  animation: pin-blink 1s ease-in-out infinite;
+}
+.sos-pin.waiting svg {
+  fill: #fff;
+}
+@keyframes pin-blink {
+  0% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 45, 45, 0.85), 0 2px 8px rgba(0, 0, 0, 0.55);
+  }
+  50% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 16px rgba(255, 45, 45, 0), 0 2px 8px rgba(0, 0, 0, 0.55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sos-pin.waiting {
+    animation: none;
+  }
 }
 .sos-pin.assigned {
   border-color: #1a73e8;

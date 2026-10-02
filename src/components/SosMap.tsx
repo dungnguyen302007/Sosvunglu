@@ -100,17 +100,25 @@ const PERSON_SVG =
 /** Vẽ tối đa chừng này hình người; đông hơn thì thêm số tổng ở góc. */
 const MAX_FIGURES = 5
 
+/** Màu theo TÌNH TRẠNG (chủ dự án chốt 02/10/2026): chưa đội nào nhận = đỏ nháy; đã có đội nhận = vàng đứng yên. */
+export const SOS_COLOR = { waiting: '#ff2d2d', taken: '#ffd60a' }
+
+/** Đã có đội NHẬN (đội bấm nhận rồi) — mới giao mà đội chưa xác nhận thì vẫn tính là chưa. */
+export function sosTaken(s: Sos): boolean {
+  return !!s.assigned_team_id && !!s.accepted_at && s.status !== 'waiting' && s.status !== 'cannot_reach'
+}
+
 /**
  * Người dân cần cứu = HÌNH NGƯỜI: 1 người 1 hình, 2 người 2 hình… (quá 5 thì 5 hình + số tổng).
- * Màu nền = mức ưu tiên; viền xanh = đã có đội nhận; nguy cấp thì nháy.
+ * ĐỎ NHÁY = chưa đội nào nhận; VÀNG = đã có đội nhận. Ca "rất nguy cấp" có thêm dấu ! ở góc.
  */
-function sosIcon(color: string, people: number, assigned: boolean, critical: boolean) {
+function sosIcon(people: number, taken: boolean, critical: boolean) {
   const n = Math.max(1, people)
   const figures = Math.min(n, MAX_FIGURES)
   const w = 20 + figures * 13
   return L.divIcon({
     className: 'sos-pin-wrap',
-    html: `<div class="sos-pin${assigned ? ' assigned' : ''}${critical ? ' critical' : ''}" style="background:${color}">${PERSON_SVG.repeat(figures)}${n > figures ? `<b>${n}</b>` : ''}</div>`,
+    html: `<div class="sos-pin ${taken ? 'taken' : 'waiting'}" style="background:${taken ? SOS_COLOR.taken : SOS_COLOR.waiting}">${PERSON_SVG.repeat(figures)}${n > figures ? `<b>${n}</b>` : ''}${critical ? '<i>!</i>' : ''}</div>`,
     iconSize: [w, 40],
     iconAnchor: [w / 2, 20],
     popupAnchor: [0, -22],
@@ -200,7 +208,7 @@ export function SosMap({
           {s.accuracy != null && s.accuracy >= 50 && s.accuracy <= 3000 && (
             <Circle center={[s.lat, s.lng]} radius={s.accuracy} pathOptions={{ color: PRIORITY_COLOR[level], weight: 1, fillOpacity: 0.12 }} />
           )}
-          <Marker position={[s.lat, s.lng]} icon={sosIcon(PRIORITY_COLOR[level], s.people_count, !!s.assigned_team_id, level === 'critical')} zIndexOffset={score}>
+          <Marker position={[s.lat, s.lng]} icon={sosIcon(s.people_count, sosTaken(s), level === 'critical')} zIndexOffset={score + (sosTaken(s) ? 0 : 1000)}>
             {renderSosPopup && <Popup minWidth={240} maxWidth={290} autoPanPadding={[24, 80]}>{renderSosPopup(s)}</Popup>}
           </Marker>
           </Fragment>
