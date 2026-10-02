@@ -48,6 +48,54 @@ export function mucXemSos(nguoi: Nguoi, sos: Sos, viTri: ViTri, now = Date.now()
   }
 }
 
+/** Vị trí cứu hộ cũ hơn chừng này coi như mất tín hiệu — không hiện cho người dân / đội khác. */
+export const VI_TRI_SONG_MS = 15 * 60 * 1000
+
+type ViTriNguoi = { nguoiDungId: string; doiId: string | null; trongCa: boolean; lat: number; lng: number; capNhatLuc: Date }
+
+/** 'day-du' = kèm tên + SĐT cứu hộ; 'an-danh' = chỉ chấm trên bản đồ + đội. */
+export type MucXemViTri = 'day-du' | 'an-danh' | null
+
+/**
+ * Đội ĐANG ĐI CỨU người dân này: SOS còn mở, đã có đội VÀ đội đã bấm nhận.
+ * (Mới tự giao, đội chưa xác nhận thì chưa cho dân thấy — 2 phút sau có thể đổi đội khác.)
+ */
+export function doiDangCuu(sos: Pick<YeuCauSos, 'doiId' | 'trangThai' | 'nhanLuc'> | null): string | null {
+  if (!sos || !sos.doiId || !sos.nhanLuc) return null
+  return sos.trangThai === 'DA_GIAO' || sos.trangThai === 'DANG_TOI' || sos.trangThai === 'DA_TOI' ? sos.doiId : null
+}
+
+/**
+ * Người này được thấy vị trí của một cứu hộ ở mức nào.
+ *  - Chỉ huy: tất cả, kể cả người đã tắt ca (hiện xám).
+ *  - Cứu hộ: đồng đội + cứu hộ đội khác trong bán kính quanh mình — chỉ người ĐANG trong ca, còn tín hiệu.
+ *  - Người dân: CHỈ đội đang đi cứu mình, ẩn danh. Không thấy đội nào khác (kẻ xấu đăng ký
+ *    làm dân để theo dõi cứu hộ đang ở đâu là không được).
+ * Tắt ca = biến khỏi bản đồ của dân và đội khác ngay.
+ */
+export function mucXemViTri(
+  nguoi: Nguoi,
+  v: ViTriNguoi,
+  boiCanh: { viTriToi: ViTri; doiDangCuuToi: string | null },
+  now = Date.now(),
+): MucXemViTri {
+  const dangTruc = v.trongCa && now - v.capNhatLuc.getTime() <= VI_TRI_SONG_MS
+  switch (nguoi.vaiTro) {
+    case 'CHI_HUY':
+      return 'day-du'
+    case 'CUU_HO':
+      if (v.nguoiDungId === nguoi.id) return 'day-du'
+      if (!dangTruc) return null
+      if (nguoi.doiId && v.doiId === nguoi.doiId) return 'day-du'
+      return ganCuuHo(boiCanh.viTriToi, v, now) ? 'day-du' : null
+    case 'DAN':
+      if (!dangTruc) return null
+      return boiCanh.doiDangCuuToi != null && v.doiId === boiCanh.doiDangCuuToi ? 'an-danh' : null
+    default:
+      return null
+  }
+}
+
 export class TuChoi extends Error {}
 
 /** Việc cứu hộ / chỉ huy được làm trên một SOS. */

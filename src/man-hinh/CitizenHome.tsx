@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { backend } from '../lib/backend'
 import { getBattery, getPosition, POOR_ACCURACY_M } from '../lib/device'
-import type { LatLng } from '../lib/geo'
-import { useLive, useSosQueue } from '../lib/hooks'
+import { distanceKm, formatKm, type LatLng } from '../lib/geo'
+import { useLive, useNow, useSosQueue } from '../lib/hooks'
+import { boMaKhoiLink, maTrongLink } from '../lib/link-moi'
 import { STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/labels'
 import type { CitizenSosPatch, Profile, Sos, Vulnerable, WaterLevel } from '../types'
 import { CallButton, ErrorLine, Header, PendingCard, Sheet } from '../components/common'
-import { LocationPicker } from '../components/SosMap'
+import { isLive, LocationPicker, SosMap } from '../components/SosMap'
+import { JoinTeam } from '../components/JoinTeam'
 import { HomeLocation } from '../components/HomeLocation'
 import { SosTrigger } from '../components/SosTrigger'
 import { Stepper } from './AuthPage'
@@ -23,7 +25,9 @@ const STATUS_MESSAGE: Record<Sos['status'], string> = {
 }
 
 export function CitizenHome({ profile }: { profile: Profile }) {
-  const [menu, setMenu] = useState<null | 'menu' | 'profile' | 'prep'>(null)
+  // Mở bằng link mời đội (?moi=MÃ) khi đã đăng nhập → hỏi vào đội luôn.
+  const [maMoi] = useState(() => maTrongLink())
+  const [menu, setMenu] = useState<null | 'menu' | 'profile' | 'prep' | 'join'>(maMoi ? 'join' : null)
   const [sos, setSos] = useState<Sos | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [people, setPeople] = useState(profile.household_size)
@@ -99,10 +103,23 @@ export function CitizenHome({ profile }: { profile: Profile }) {
           <button className="btn btn-outline btn-block" onClick={() => setMenu('prep')}>
             🎒 Chuẩn bị trước mưa lũ
           </button>
+          <button className="btn btn-outline btn-block" onClick={() => setMenu('join')}>
+            🚤 Tôi là cứu hộ — nhập mã mời đội
+          </button>
           <button className="btn btn-outline btn-block" onClick={() => void backend.signOut()}>
             Đăng xuất
           </button>
         </div>
+      </Sheet>
+      <Sheet
+        open={menu === 'join'}
+        onClose={() => {
+          boMaKhoiLink()
+          setMenu(null)
+        }}
+        title="Vào đội cứu hộ"
+      >
+        <JoinTeam initialCode={maMoi ?? ''} />
       </Sheet>
       <Sheet open={menu === 'profile'} onClose={() => setMenu(null)} title="Thông tin của tôi">
         <ProfileForm profile={profile} onDone={() => setMenu(null)} />
@@ -122,6 +139,12 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
   const [fixing, setFixing] = useState(false)
   const [picked, setPicked] = useState<LatLng | null>(null)
   const poor = sos.accuracy == null || sos.accuracy > POOR_ACCURACY_M
+  const now = useNow(10000)
+  // Máy chủ chỉ trả vị trí khi đội ĐÃ NHẬN đi cứu mình; ngoài ra danh sách rỗng.
+  const locs = useLive(() => backend.listLocations(), 20000)
+  const boats = (locs.data ?? []).filter((l) => isLive(l, now))
+  const nearestKm = boats.length ? Math.min(...boats.map((b) => distanceKm(b, sos))) : null
+  const teamComing = !!sos.assigned_team_id && !!sos.accepted_at && ['assigned', 'on_way', 'arrived'].includes(sos.status)
 
   const patch = async (p: CitizenSosPatch) => {
     setBusy(true)
@@ -155,6 +178,17 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
         </p>
         {teamName && <p>🚤 <b>{teamName}</b></p>}
         <p className="muted small">Gửi lúc {timeAgo(sos.created_at)} · {sos.people_count} người</p>
+      </div>
+
+      <div className="card map-card">
+        {teamComing && nearestKm != null && (
+          <p className="boat-line">
+            🚤 <b>{teamName ?? 'Đội cứu hộ'}</b> đang cách bạn khoảng <b>{formatKm(nearestKm)}</b>
+          </p>
+        )}
+        {teamComing && nearestKm == null && <p className="muted small">Đội đã nhận nhưng chưa gửi được vị trí (mất sóng). Giữ máy để họ gọi.</p>}
+        {!teamComing && <p className="muted small">Hình người là vị trí bạn đã gửi. Khi có đội nhận, xuồng của đội sẽ hiện trên bản đồ này.</p>}
+        <SosMap sos={[sos]} locations={boats} locationLabel={() => teamName ?? undefined} height="260px" />
       </div>
 
       <div className="card">

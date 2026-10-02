@@ -3,6 +3,7 @@ import { backend } from '../lib/backend'
 import type { GuestStatus } from '../lib/backend/types'
 import { isValidPhone, normalizePhone } from '../lib/geo'
 import { useSosQueue } from '../lib/hooks'
+import { boMaKhoiLink, maTrongLink } from '../lib/link-moi'
 import { STATUS_LABEL, VULNERABLE_LABEL } from '../lib/labels'
 import { storage } from '../lib/storage'
 import type { SignUpInput, Vulnerable } from '../types'
@@ -13,7 +14,10 @@ import { SosTrigger } from '../components/SosTrigger'
 type Tab = 'login' | 'register' | 'guest'
 
 export function AuthPage() {
-  const [tab, setTab] = useState<Tab>(() => (storage.get('guest_sos_id') ? 'guest' : 'login'))
+  // Mở bằng link mời đội (?moi=MÃ) → vào thẳng form đăng ký cứu hộ.
+  // Còn lại: mở ra là nút SOS khẩn — người dân KHÔNG cần đăng ký mới kêu cứu được.
+  const [maMoi] = useState(() => maTrongLink())
+  const [tab, setTab] = useState<Tab>(maMoi ? 'register' : 'guest')
   return (
     <div className="page auth">
       <div className="brand">
@@ -25,13 +29,13 @@ export function AuthPage() {
         value={tab}
         onChange={setTab}
         items={[
+          { value: 'guest', label: '🆘 SOS khẩn' },
           { value: 'login', label: 'Đăng nhập' },
           { value: 'register', label: 'Đăng ký' },
-          { value: 'guest', label: '🆘 SOS khẩn' },
         ]}
       />
       {tab === 'login' && <LoginForm />}
-      {tab === 'register' && <RegisterForm />}
+      {tab === 'register' && <Register maMoi={maMoi} />}
       {tab === 'guest' && <GuestSos />}
     </div>
   )
@@ -76,6 +80,80 @@ function LoginForm() {
 }
 
 const VULNERABLE_KEYS = Object.keys(VULNERABLE_LABEL) as Vulnerable[]
+
+/** Đăng ký: người dân (hồ sơ hộ) hoặc cứu hộ (form ngắn + mã mời đội). */
+function Register({ maMoi }: { maMoi: string | null }) {
+  const [kind, setKind] = useState<'citizen' | 'rescuer'>(maMoi ? 'rescuer' : 'citizen')
+  return (
+    <>
+      <div className="chips">
+        <button type="button" className={`chip${kind === 'citizen' ? ' on' : ''}`} onClick={() => setKind('citizen')}>
+          🏠 Người dân
+        </button>
+        <button type="button" className={`chip${kind === 'rescuer' ? ' on' : ''}`} onClick={() => setKind('rescuer')}>
+          🚤 Cứu hộ (có mã mời đội)
+        </button>
+      </div>
+      {kind === 'citizen' ? <RegisterForm /> : <RescuerRegisterForm maMoi={maMoi} />}
+    </>
+  )
+}
+
+function RescuerRegisterForm({ maMoi }: { maMoi: string | null }) {
+  const [f, setF] = useState({ full_name: '', phone: '', password: '', ma_moi: maMoi ?? '' })
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!isValidPhone(f.phone)) return setError('Số điện thoại không hợp lệ')
+    if (f.password.length < 6) return setError('Mật khẩu tối thiểu 6 ký tự')
+    setBusy(true)
+    setError(null)
+    try {
+      await backend.signUpRescuer({ ...f, phone: normalizePhone(f.phone) })
+      boMaKhoiLink()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="card form" onSubmit={submit}>
+      <p className="muted small">Dành cho thành viên đội cứu hộ. Mã mời do chỉ huy gửi vào nhóm của đội — đăng ký xong là vào thẳng đội.</p>
+      <label>
+        Mã mời đội *
+        <input
+          className="code-input"
+          required
+          autoCapitalize="characters"
+          autoComplete="off"
+          value={f.ma_moi}
+          onChange={(e) => setF({ ...f, ma_moi: e.target.value.toUpperCase() })}
+        />
+      </label>
+      <label>
+        Họ và tên *
+        <input required autoComplete="name" value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} />
+      </label>
+      <label>
+        Số điện thoại * (dùng để đăng nhập)
+        <input type="tel" inputMode="tel" required value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+      </label>
+      <label>
+        Mật khẩu * (tối thiểu 6 ký tự)
+        <input type="password" autoComplete="new-password" required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+      </label>
+      <ErrorLine error={error} />
+      <button className="btn btn-primary btn-block" disabled={busy}>
+        {busy ? 'Đang đăng ký…' : '🚤 Đăng ký và vào đội'}
+      </button>
+      <p className="muted small">Đã có tài khoản? Đăng nhập rồi mở lại link mời (hoặc vào Menu → "Tôi là cứu hộ").</p>
+    </form>
+  )
+}
 
 function RegisterForm() {
   const [f, setF] = useState<SignUpInput>({
@@ -289,7 +367,7 @@ function GuestSos() {
   const ready = name.trim().length > 1 && isValidPhone(phone)
   return (
     <div className="card form">
-      <p className="muted small">Chưa có tài khoản? Nhập tên và SĐT rồi nhấn giữ nút SOS.</p>
+      <p className="muted small">Không cần đăng ký. Nhập tên và SĐT (để đội cứu hộ gọi lại) rồi nhấn giữ nút SOS.</p>
       <label>
         Họ tên
         <input value={name} onChange={(e) => setName(e.target.value)} />

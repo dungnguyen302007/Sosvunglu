@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BAN_KINH_GAN_KM, kiemTraViec, mucXemSos, TuChoi, VI_TRI_CU_MS } from './quyen-sos'
+import { BAN_KINH_GAN_KM, doiDangCuu, kiemTraViec, mucXemSos, mucXemViTri, TuChoi, VI_TRI_CU_MS, VI_TRI_SONG_MS } from './quyen-sos'
 
 /**
  * Bộ kiểm phân quyền SOS (hàm thuần). Mỗi vai CỐ xem / sửa thứ không phải của mình → phải bị chặn.
@@ -70,6 +70,72 @@ describe('xem SOS', () => {
   it('cứu hộ: SOS đã an toàn / đã huỷ của người khác → không thấy', () => {
     expect(mucXemSos(cuuHo, sos({ trangThai: 'DA_AN_TOAN' as never }), viTriMoi, now)).toBeNull()
     expect(mucXemSos(cuuHo, sos({ trangThai: 'DA_HUY' as never }), viTriMoi, now)).toBeNull()
+  })
+})
+
+describe('xem vị trí cứu hộ', () => {
+  const vt = (o: Partial<{ nguoiDungId: string; doiId: string | null; trongCa: boolean; lat: number; lng: number; capNhatLuc: Date }> = {}) => ({
+    nguoiDungId: 'ch-9',
+    doiId: 'doi-B' as string | null,
+    trongCa: true,
+    ...HUE,
+    capNhatLuc: new Date(now - 60_000),
+    ...o,
+  })
+  const khongCo = { viTriToi: null, doiDangCuuToi: null }
+  const sosDaNhan = { doiId: 'doi-B', trangThai: 'DANG_TOI' as never, nhanLuc: new Date(now - 60_000) }
+
+  it('đội đang cứu = SOS mở, có đội VÀ đội đã bấm nhận', () => {
+    expect(doiDangCuu(sosDaNhan)).toBe('doi-B')
+    expect(doiDangCuu({ ...sosDaNhan, nhanLuc: null })).toBeNull() // mới tự giao, đội chưa xác nhận
+    expect(doiDangCuu({ ...sosDaNhan, trangThai: 'DA_AN_TOAN' as never })).toBeNull()
+    expect(doiDangCuu({ ...sosDaNhan, trangThai: 'DA_HUY' as never })).toBeNull()
+    expect(doiDangCuu({ ...sosDaNhan, trangThai: 'KHONG_TIEP_CAN' as never })).toBeNull()
+    expect(doiDangCuu({ ...sosDaNhan, doiId: null })).toBeNull()
+    expect(doiDangCuu(null)).toBeNull()
+  })
+
+  it('người dân: thấy đội đang cứu mình, ẨN DANH (không tên/SĐT cứu hộ)', () => {
+    expect(mucXemViTri(dan, vt(), { viTriToi: null, doiDangCuuToi: 'doi-B' }, now)).toBe('an-danh')
+  })
+
+  it('người dân: KHÔNG thấy đội khác, và không thấy ai khi chưa có đội nhận', () => {
+    expect(mucXemViTri(dan, vt({ doiId: 'doi-C' }), { viTriToi: null, doiDangCuuToi: 'doi-B' }, now)).toBeNull()
+    expect(mucXemViTri(dan, vt(), khongCo, now)).toBeNull()
+    expect(mucXemViTri(dan, vt({ doiId: null }), khongCo, now)).toBeNull()
+  })
+
+  it('người dân: cứu hộ tắt ca / mất tín hiệu → biến khỏi bản đồ', () => {
+    const ctx = { viTriToi: null, doiDangCuuToi: 'doi-B' }
+    expect(mucXemViTri(dan, vt({ trongCa: false }), ctx, now)).toBeNull()
+    expect(mucXemViTri(dan, vt({ capNhatLuc: new Date(now - VI_TRI_SONG_MS - 1) }), ctx, now)).toBeNull()
+  })
+
+  it('cứu hộ: thấy đội khác ở gần, không thấy đội khác ở xa', () => {
+    expect(mucXemViTri(cuuHo, vt(), { viTriToi: viTriMoi, doiDangCuuToi: null }, now)).toBe('day-du')
+    expect(mucXemViTri(cuuHo, vt(XA), { viTriToi: viTriMoi, doiDangCuuToi: null }, now)).toBeNull()
+  })
+
+  it('cứu hộ: chưa bật ca lần nào (không có vị trí) → không thấy đội khác', () => {
+    expect(mucXemViTri(cuuHo, vt(), khongCo, now)).toBeNull()
+    expect(mucXemViTri(cuuHo, vt(), { viTriToi: viTriCu, doiDangCuuToi: null }, now)).toBeNull()
+  })
+
+  it('cứu hộ: đồng đội đang trực thì thấy dù ở xa; đồng đội tắt ca thì không', () => {
+    expect(mucXemViTri(cuuHo, vt({ doiId: 'doi-A', ...XA }), khongCo, now)).toBe('day-du')
+    expect(mucXemViTri(cuuHo, vt({ doiId: 'doi-A', trongCa: false }), { viTriToi: viTriMoi, doiDangCuuToi: null }, now)).toBeNull()
+  })
+
+  it('cứu hộ: người đội khác đã tắt ca → không thấy dù ở ngay cạnh', () => {
+    expect(mucXemViTri(cuuHo, vt({ trongCa: false }), { viTriToi: viTriMoi, doiDangCuuToi: null }, now)).toBeNull()
+  })
+
+  it('chỉ huy thấy tất cả, kể cả người đã tắt ca', () => {
+    expect(mucXemViTri(chiHuy, vt({ trongCa: false, ...XA }), khongCo, now)).toBe('day-du')
+  })
+
+  it('vai lạ → không thấy vị trí nào', () => {
+    expect(mucXemViTri(vaiLa, vt(), { viTriToi: viTriMoi, doiDangCuuToi: 'doi-B' }, now)).toBeNull()
   })
 })
 

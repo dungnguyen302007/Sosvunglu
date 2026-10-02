@@ -1,11 +1,12 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { backend } from '../lib/backend'
 import { formatKm, isValidPhone, nearestTeams } from '../lib/geo'
 import { useDispatchLoop, useLive, useNow } from '../lib/hooks'
+import { linkMoi } from '../lib/link-moi'
 import { ROLE_LABEL, STATUS_LABEL, TEAM_STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL, timeAgo } from '../lib/labels'
 import { PRIORITY_COLOR, priorityScore, sortByPriority } from '../lib/priority'
-import { OPEN_STATUSES, type Profile, type RescuerLocation, type Role, type Sos, type SosStatus, type Team } from '../types'
-import { ErrorLine, Header, Stat, Tabs } from '../components/common'
+import { OPEN_STATUSES, type Invite, type Profile, type RescuerLocation, type Role, type Sos, type SosStatus, type Team } from '../types'
+import { ErrorLine, Header, Sheet, Stat, Tabs } from '../components/common'
 import { SosCard } from '../components/SosCard'
 import { isLive, SosMap } from '../components/SosMap'
 
@@ -155,7 +156,7 @@ export function CommanderHome({ profile }: { profile: Profile }) {
               <i className="legend-dot" style={{ background: PRIORITY_COLOR.critical }} />
               nguy cấp <i className="legend-dot" style={{ background: PRIORITY_COLOR.high }} />
               nguy hiểm <i className="legend-dot" style={{ background: PRIORITY_COLOR.normal }} />
-              cần cứu · 🚤 {locList.filter((l) => isLive(l, now)).length} cứu hộ đang trực
+              cần cứu · mỗi hình người = 1 người · 🚤 {locList.filter((l) => isLive(l, now)).length} cứu hộ đang trực
             </span>
           </div>
           {locList.filter((l) => isLive(l, now)).length === 0 && (
@@ -169,6 +170,7 @@ export function CommanderHome({ profile }: { profile: Profile }) {
               locations={locList}
               showOffline={showOffline}
               households={showHouses ? (households.data ?? []) : []}
+              locationLabel={(l) => teamList.find((t) => t.id === l.team_id)?.name}
               renderSosPopup={(s) => <SosCard sos={s} teams={teamList} now={now} compact actions={assignControls(s)} />}
               renderLocationPopup={(l) => <LocationPopup l={l} teams={teamList} now={now} />}
               renderHouseholdPopup={(h) => <HouseholdPopup h={h} />}
@@ -262,6 +264,7 @@ function TeamsPanel({
   const [teamId, setTeamId] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const invites = useLive(() => backend.listInvites(), 60000)
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setError(null)
@@ -307,9 +310,8 @@ function TeamsPanel({
               <span>🟢 {onDuty.length} người trong ca</span>
               <span>📋 {tasks.length} việc đang mở</span>
             </div>
-            {members.length === 0 && (
-              <p className="warn-line">Đội chưa có thành viên. Dùng ô "Cấp quyền" bên dưới để thêm người vào đội.</p>
-            )}
+            {members.length === 0 && <p className="warn-line">Đội chưa có thành viên. Tạo mã mời bên dưới rồi gửi cho anh em trong đội.</p>}
+            <InviteBox team={t} invite={invites.data?.find((i) => i.team_id === t.id) ?? null} now={now} onChanged={invites.reload} onError={setError} />
             {members.length > 0 && onDuty.length === 0 && (
               <p className="warn-line">Chưa ai bật ca trực, nên đội chưa hiện trên bản đồ và chưa được tự giao việc.</p>
             )}
@@ -373,7 +375,10 @@ function TeamsPanel({
 
       <form className="card form" onSubmit={grant}>
         <h3>🔑 Cấp quyền cho tài khoản</h3>
-        <p className="muted small">Người đó phải đăng ký tài khoản trước, sau đó nhập SĐT của họ ở đây.</p>
+        <p className="muted small">
+          Thêm cứu hộ vào đội thì dùng <b>mã mời</b> ở thẻ đội cho nhanh. Ô này để cấp chỉ huy, chuyển đội hoặc hạ quyền theo SĐT (người đó phải đăng
+          ký trước).
+        </p>
         <input type="tel" placeholder="SĐT đã đăng ký" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <div className="grid2">
           <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
@@ -396,6 +401,118 @@ function TeamsPanel({
       </form>
       {msg && <p className="ok">{msg}</p>}
       <ErrorLine error={error} />
+    </div>
+  )
+}
+
+/**
+ * Mã mời của một đội: chỉ huy tạo mã → gửi link vào nhóm Zalo của đội / cho quét QR → ai đăng ký
+ * bằng mã là vào thẳng đội, không phải gõ từng SĐT. Mã có hạn + giới hạn lượt, thu hồi được.
+ */
+function InviteBox({
+  team,
+  invite,
+  now,
+  onChanged,
+  onError,
+}: {
+  team: Team
+  invite: Invite | null
+  now: number
+  onChanged: () => Promise<void> | void
+  onError: (e: string | null) => void
+}) {
+  const [qr, setQr] = useState<string | null>(null)
+  const [showQr, setShowQr] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const code = invite?.code
+
+  useEffect(() => {
+    if (!showQr || !code) return
+    let con = true
+    void import('qrcode')
+      .then((m) => m.toDataURL(linkMoi(code), { width: 560, margin: 2 }))
+      .then((url) => con && setQr(url))
+      .catch(() => con && setQr(null))
+    return () => {
+      con = false
+    }
+  }, [showQr, code])
+
+  const run = async (fn: () => Promise<unknown>) => {
+    onError(null)
+    try {
+      await fn()
+      await onChanged()
+    } catch (e) {
+      onError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  if (!invite) {
+    return (
+      <button className="btn btn-primary btn-small" onClick={() => void run(() => backend.createInvite(team.id))}>
+        🔗 Tạo mã mời vào đội
+      </button>
+    )
+  }
+
+  const link = linkMoi(invite.code)
+  const text = `Mời vào ${team.name} trên app SOS vùng lũ. Mở link rồi đăng ký (hoặc nhập mã ${invite.code}): ${link}`
+  const gioCon = Math.max(0, Math.round((new Date(invite.expires_at).getTime() - now) / 3600_000))
+  const share = async () => {
+    try {
+      if (navigator.share) await navigator.share({ text })
+      else {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 3000)
+      }
+    } catch {
+      /* người dùng đóng bảng chia sẻ */
+    }
+  }
+
+  return (
+    <div className="invite">
+      <div>
+        Mã mời: <b className="invite-code">{invite.code}</b>
+        <span className="muted small">
+          {' '}
+          · còn {gioCon} giờ · đã dùng {invite.used}/{invite.max_uses}
+        </span>
+      </div>
+      <div className="row wrap">
+        <button className="btn btn-primary btn-small" onClick={() => void share()}>
+          {copied ? '✅ Đã chép' : '📤 Gửi link mời'}
+        </button>
+        <button className="btn btn-outline btn-small" onClick={() => setShowQr(true)}>
+          ▦ Mã QR
+        </button>
+        <button
+          className="btn btn-outline btn-small"
+          onClick={() => {
+            if (confirm('Tạo mã mới? Mã cũ sẽ hết dùng được ngay.')) void run(() => backend.createInvite(team.id))
+          }}
+        >
+          🔄 Mã mới
+        </button>
+        <button
+          className="btn btn-outline btn-small"
+          onClick={() => {
+            if (confirm('Thu hồi mã mời của đội này? Người đã vào đội vẫn ở lại.')) void run(() => backend.revokeInvite(team.id))
+          }}
+        >
+          ⛔ Thu hồi
+        </button>
+      </div>
+      <Sheet open={showQr} onClose={() => setShowQr(false)} title={`Mời vào ${team.name}`}>
+        <p className="muted small">Anh em mở camera điện thoại quét mã này, đăng ký là vào thẳng đội.</p>
+        {qr ? <img className="qr" src={qr} alt={`Mã QR mời vào ${team.name}`} /> : <p className="center muted">Đang tạo mã QR…</p>}
+        <p className="center">
+          Hoặc nhập mã: <b className="invite-code">{invite.code}</b>
+        </p>
+      </Sheet>
     </div>
   )
 }

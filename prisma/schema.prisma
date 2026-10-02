@@ -79,6 +79,9 @@ model NguoiDung {
   biKhoa       Boolean  @default(false)
   /// Tăng mỗi lần đổi vai, khoá, đổi mật khẩu → mọi phiên cũ hết hiệu lực
   phienBan     Int      @default(1)
+  /// Vào đội bằng mã mời nào (mã lộ thì biết ai đã vào bằng mã đó để khoá)
+  maMoiId      String?
+  maMoi        MaMoi?   @relation(fields: [maMoiId], references: [id])
   taoLuc       DateTime @default(now())
   capNhatLuc   DateTime @updatedAt
 
@@ -101,6 +104,26 @@ model Doi {
   thanhVien NguoiDung[]
   sos       YeuCauSos[]
   viTri     ViTriCuuHo[]
+  maMoi     MaMoi[]
+}
+
+/// Mã mời vào đội (luật: src/lib/ma-moi.ts). Mỗi đội một mã đang sống; tạo mã mới = thu hồi mã cũ.
+model MaMoi {
+  id         String    @id @default(uuid())
+  ma         String    @unique
+  doiId      String
+  doi        Doi       @relation(fields: [doiId], references: [id])
+  /// Chỉ huy đã tạo mã
+  taoBoiId   String?
+  hetHanLuc  DateTime
+  luotToiDa  Int       @default(30)
+  luotDaDung Int       @default(0)
+  thuHoiLuc  DateTime?
+  taoLuc     DateTime  @default(now())
+
+  nguoiDaVao NguoiDung[]
+
+  @@index([doiId])
 }
 
 model YeuCauSos {

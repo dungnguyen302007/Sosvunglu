@@ -1,5 +1,5 @@
 import type { Backend, GuestStatus } from './types'
-import type { Profile, RescuerLocation, Sos, Team } from '../../types'
+import type { Invite, Profile, RescuerLocation, Sos, Team } from '../../types'
 
 /**
  * Lớp dữ liệu gọi máy chủ Next.js của chính app (thay bản Supabase + bản demo của bản Vite).
@@ -60,6 +60,15 @@ export const apiBackend: Backend = {
     await goi('/api/dang-ky', { method: 'POST', json: input })
     phatSuKienDangNhap()
   },
+  async signUpRescuer(input) {
+    await goi('/api/dang-ky', { method: 'POST', json: input })
+    phatSuKienDangNhap()
+  },
+  async joinTeam(code) {
+    const r = await goi<{ team_name: string }>('/api/ma-moi/dung', { method: 'POST', json: { code } })
+    phatSuKienDangNhap()
+    return r.team_name
+  },
   async signIn(phone, password) {
     await goi('/api/dang-nhap', { method: 'POST', json: { phone, password } })
     phatSuKienDangNhap()
@@ -111,6 +120,11 @@ export const apiBackend: Backend = {
   async setUserRole(phone, role, teamId) {
     await goi('/api/quyen', { method: 'POST', json: { phone, role, team_id: teamId } })
   },
+  listInvites: () => goi<Invite[]>('/api/ma-moi'),
+  createInvite: (teamId) => goi<Invite>('/api/ma-moi', { method: 'POST', json: { team_id: teamId } }),
+  async revokeInvite(teamId) {
+    await goi('/api/ma-moi/thu-hoi', { method: 'POST', json: { team_id: teamId } })
+  },
   async lockUser(phone, lock) {
     await goi('/api/quyen/khoa', { method: 'POST', json: { phone, khoa: lock } })
   },
@@ -122,6 +136,7 @@ export const apiBackend: Backend = {
     await goi('/api/vi-tri', { method: 'POST', json: { lat, lng, on_duty: onDuty } })
   },
   listLocations: () => goi<RescuerLocation[]>('/api/vi-tri'),
+  endDuty: async () => (await goi<{ tra_viec: number }>('/api/ca-truc', { method: 'POST' })).tra_viec,
 
   subscribe(cb) {
     nguoiNghe.add(cb)

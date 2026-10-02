@@ -97,6 +97,23 @@ export interface SignUpInput {
   dong_y: boolean
 }
 
+/** Cứu hộ đăng ký bằng mã mời của đội — form ngắn, không cần hồ sơ hộ. */
+export interface RescuerSignUpInput {
+  full_name: string
+  phone: string
+  password: string
+  ma_moi: string
+}
+
+/** Mã mời vào đội (chỉ huy tạo). */
+export interface Invite {
+  team_id: string
+  code: string
+  expires_at: string
+  max_uses: number
+  used: number
+}
+
 export interface NewSos {
   lat: number
   lng: number

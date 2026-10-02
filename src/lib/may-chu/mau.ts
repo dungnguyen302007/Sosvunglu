@@ -49,7 +49,20 @@ export const dangKy = z.object({
   dong_y: z.literal(true, { errorMap: () => ({ message: 'Cần đồng ý cho đội cứu hộ dùng thông tin' }) }),
 })
 
-export const dangNhap = z.object({ phone: z.string().max(30), password: z.string().max(100) })
+const maMoi = z.string().trim().min(4).max(20)
+
+/** Cứu hộ đăng ký bằng mã mời đội: không cần hồ sơ hộ, không cần ô đồng ý (không khai dữ liệu sức khoẻ). */
+export const dangKyCuuHo = z.object({
+  full_name: chu(100).min(1, 'Nhập họ tên'),
+  phone: sdt,
+  password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự').max(100),
+  ma_moi: maMoi,
+})
+
+export const dungMaMoi = z.object({ code: maMoi })
+export const doiCuaMa = z.object({ team_id: z.string().uuid() })
+
+export const dangNhap =z.object({ phone: z.string().max(30), password: z.string().max(100) })
 
 export const suaHoSo = z
   .object({

@@ -1,9 +1,11 @@
 import type {
   CitizenSosPatch,
   GuestSosInput,
+  Invite,
   NewSos,
   Profile,
   RescuerLocation,
+  RescuerSignUpInput,
   Role,
   SignUpInput,
   Sos,
@@ -25,6 +27,10 @@ export interface Backend {
   getProfile(): Promise<Profile | null>
   onAuthChange(cb: () => void): () => void
   signUp(input: SignUpInput): Promise<void>
+  /** Cứu hộ đăng ký bằng mã mời đội → vào thẳng đội đó. */
+  signUpRescuer(input: RescuerSignUpInput): Promise<void>
+  /** Người đã có tài khoản nhập mã mời → thành cứu hộ của đội phát mã. Trả tên đội. */
+  joinTeam(code: string): Promise<string>
   signIn(phone: string, password: string): Promise<void>
   signOut(): Promise<void>
   updateProfile(patch: Partial<Omit<Profile, 'id' | 'role' | 'team_id' | 'phone'>>): Promise<void>
@@ -49,6 +55,10 @@ export interface Backend {
   createTeam(team: Omit<Team, 'id'>): Promise<void>
   updateTeam(id: string, patch: Partial<Omit<Team, 'id'>>): Promise<void>
   setUserRole(phone: string, role: Role, teamId: string | null): Promise<void>
+  /** Chỉ huy: mã mời đang sống của các đội / tạo mã mới (mã cũ của đội hết dùng) / thu hồi. */
+  listInvites(): Promise<Invite[]>
+  createInvite(teamId: string): Promise<Invite>
+  revokeInvite(teamId: string): Promise<void>
   /** Chỉ huy: khoá / mở khoá tài khoản phá hoại. */
   lockUser(phone: string, lock: boolean): Promise<void>
 
@@ -58,7 +68,10 @@ export interface Backend {
   listHouseholds(): Promise<Profile[]>
 
   upsertMyLocation(lat: number, lng: number, onDuty: boolean): Promise<void>
+  /** Vị trí cứu hộ được thấy theo vai: chỉ huy = tất cả; cứu hộ = đồng đội + đội lân cận; dân = đội đang cứu mình. */
   listLocations(): Promise<RescuerLocation[]>
+  /** Tắt ca (nghỉ). Trả số việc đang dở đã trả về trung tâm vì đội không còn ai trực. */
+  endDuty(): Promise<number>
 
   /** Gọi cb mỗi khi SOS / vị trí / đội thay đổi. Trả về hàm hủy đăng ký. */
   subscribe(cb: () => void): () => void

@@ -74,6 +74,31 @@ export async function doiTuChoi(sosId: string, nguoiLamId: string) {
 }
 
 /**
+ * Một cứu hộ vừa tắt ca. Nếu đội KHÔNG còn ai trong ca mà còn việc đang dở → trả việc cho đội
+ * khác (hết đội thì về "Chờ cứu" cho chỉ huy), để người dân không ngồi chờ một đội đã nghỉ.
+ * Còn đồng đội trong ca thì để nguyên. Trả về số SOS đã trả.
+ * (Không xét "còn tín hiệu": đồng đội đang lái xuồng, máy trong túi tắt màn hình vẫn là đang trực.)
+ */
+export async function doiHetNguoiTruc(doiId: string, nguoiLamId: string): Promise<number> {
+  return trongKhoa(async (tx) => {
+    if ((await tx.viTriCuuHo.count({ where: { doiId, trongCa: true } })) > 0) return 0
+    const dangDo = await tx.yeuCauSos.findMany({
+      where: { doiId, trangThai: { in: ['DA_GIAO', 'DANG_TOI', 'DA_TOI'] } },
+      orderBy: { taoLuc: 'asc' },
+    })
+    if (dangDo.length === 0) return 0
+    const ctx = await napBoiCanh(tx)
+    for (const s of dangDo) {
+      await giaoLai(tx, s, ctx, nguoiLamId, 'doi-tat-ca')
+      // SOS này không còn của đội vừa nghỉ → đừng để SOS sau "gộp" theo nó.
+      const i = ctx.sos.findIndex((x) => x.id === s.id)
+      if (i >= 0 && ctx.sos[i].assigned_team_id === doiId) ctx.sos[i] = { ...ctx.sos[i], assigned_team_id: null, status: 'waiting' }
+    }
+    return dangDo.length
+  })
+}
+
+/**
  * Quét định kỳ (container cron gọi mỗi phút, và app của cứu hộ/chỉ huy gọi dự phòng):
  *  - đội được giao mà quá 2 phút chưa bấm "Nhận việc" → chuyển đội khác;
  *  - SOS đang chờ, nay đã có đội vào ca → giao.

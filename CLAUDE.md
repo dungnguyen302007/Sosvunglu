@@ -16,8 +16,9 @@ Webapp (PWA) SOS vùng lũ: người dân nhấn giữ nút SOS gửi hồ sơ +
 - `src/man-hinh/` — `AuthPage`, `CitizenHome`, `RescuerHome`, `CommanderHome` (chép từ bản Vite; KHÔNG đặt tên `src/pages` — Next coi là Pages Router).
 - `src/components/`, `src/lib/{priority,geo,dispatch,queue,device,hooks,labels,storage}.ts` — chép từ bản Vite, có bài kiểm.
 - `src/lib/backend/` — giao diện `Backend` (`types.ts`) + `api.ts` gọi `/api/*`. Thêm hàm vào `Backend` thì thêm route tương ứng.
-- `src/lib/quyen-sos.ts` — **luật ai thấy / sửa SOS nào** (hàm thuần) + `quyen-sos.test.ts`.
-- `src/lib/may-chu/` — chỉ chạy máy chủ: `db`, `phien` (cookie `sos_phien`), `tra-loi` (bọc lỗi, `canNguoi`), `mau` (zod), `chuyen-doi` (CSDL ↔ kiểu giao diện + CẮT TRƯỜNG theo quyền), `dieu-phoi` (tự giao đội, khoá tư vấn), `sos`, `han-muc`.
+- `src/lib/quyen-sos.ts` — **luật ai thấy / sửa SOS nào + ai thấy VỊ TRÍ cứu hộ nào** (`mucXemViTri`: dân chỉ thấy đội đã nhận cứu mình, ẩn danh; cứu hộ thấy đồng đội + đội khác trong 10 km; chỉ huy thấy hết) — hàm thuần + `quyen-sos.test.ts`.
+- `src/lib/ma-moi.ts` — **luật mã mời đội** (hạn 24 giờ, 30 lượt, thu hồi được; chỉ huy không dùng mã) + `ma-moi.test.ts`. Link mời: `/?moi=<MÃ>` (`src/lib/link-moi.ts`).
+- `src/lib/may-chu/` — chỉ chạy máy chủ: `db`, `phien` (cookie `sos_phien`), `tra-loi` (bọc lỗi, `canNguoi`), `mau` (zod), `chuyen-doi` (CSDL ↔ kiểu giao diện + CẮT TRƯỜNG theo quyền), `dieu-phoi` (tự giao đội, khoá tư vấn, trả việc khi cả đội tắt ca), `ma-moi`, `sos`, `han-muc`.
 - `src/app/api/*/route.ts` — API, đường dẫn tiếng Việt (`dang-ky`, `sos-khach`, `tac-vu/dieu-phoi`…).
 - `prisma/schema.prisma` + `migrations/` (migration đầu có 2 chỉ mục riêng "mỗi người 1 SOS đang mở" viết tay).
 - `docker-compose.yml` (app + Postgres + cron, tự đủ) + tệp phụ `docker-compose.npm.yml` (máy có nginx-proxy-manager) / `docker-compose.caddy.yml` (máy trống). `docker/postgres/khoi-tao.sh` tạo tài khoản quyền thấp `sos_app`.
@@ -26,7 +27,7 @@ Webapp (PWA) SOS vùng lũ: người dân nhấn giữ nút SOS gửi hồ sơ +
 
 ```bash
 npm install
-npm test               # vitest: 41 bài (có 18 bài quyền)
+npm test               # vitest: 58 bài (28 bài quyền SOS + vị trí, 7 bài mã mời)
 npx tsc --noEmit
 npx next build
 # Trên VPS (thư mục dự án): docker compose build · docker compose --profile tools run --rm tools · docker compose up -d
@@ -35,7 +36,7 @@ npx next build
 
 ## Mô hình dữ liệu
 
-`NguoiDung` (SĐT đăng nhập, vai DAN/CUU_HO/CHI_HUY, đội, hồ sơ hộ + `deTonThuong` = dữ liệu sức khoẻ, `dongYLuc`, `biKhoa`, `phienBan`) · `Doi` · `YeuCauSos` (người gửi hoặc khách, toạ độ + sai số, pin, mức nước, trạng thái, đội, `giaoLuc`/`nhanLuc`, `doiDaThu`, `baoGia`) · `ViTriCuuHo` (1 dòng/người) · `NhatKySos` (chỉ ghi).
+`NguoiDung` (SĐT đăng nhập, vai DAN/CUU_HO/CHI_HUY, đội, hồ sơ hộ + `deTonThuong` = dữ liệu sức khoẻ, `dongYLuc`, `biKhoa`, `phienBan`) · `Doi` · `YeuCauSos` (người gửi hoặc khách, toạ độ + sai số, pin, mức nước, trạng thái, đội, `giaoLuc`/`nhanLuc`, `doiDaThu`, `baoGia`) · `ViTriCuuHo` (1 dòng/người) · `MaMoi` (mã mời vào đội; `NguoiDung.maMoiId` = vào bằng mã nào) · `NhatKySos` (chỉ ghi).
 
 ## Quy ước
 
@@ -43,6 +44,9 @@ npx next build
 - **Quyền chặn ở máy chủ**: route nào cũng qua `canNguoi()` + `quyen-sos.ts`, trả dữ liệu qua `chuyen-doi.ts` (không trả thẳng bản ghi Prisma). Không tìm thấy = không có quyền = cùng câu (`KHONG_THAY`).
 - Sửa luật quyền → thêm bài vào `quyen-sos.test.ts` và **thử ngược** (làm hỏng luật, bài phải đỏ).
 - Không có chức năng xoá SOS / người dùng: huỷ, báo giả, khoá.
+- **Vai cứu hộ chỉ có 2 đường vào**: chỉ huy cấp theo SĐT (`/api/quyen`) hoặc mã mời đội (`/api/dang-ky` có `ma_moi`, `/api/ma-moi/dung`). Không có đường tự nhận.
+- Tắt ca gọi `/api/ca-truc` (theo từng người). Cả đội hết người trong ca mà còn việc dở → `doiHetNguoiTruc` trả việc cho đội khác / về chờ.
+- Bản đồ: người cần cứu = hình người (1 người 1 hình, quá 5 thì kèm số), cứu hộ = xuồng (đội mình viền xanh lá, tắt ca xám) — `SosMap.tsx`. Tên đội chèn vào HTML icon phải qua `esc()`.
 - Commit dạng `loại: nội dung`. Người dùng cho phép luôn cập nhật `main` (fast-forward, không force) — nhưng `main` còn là bản GitHub Pages cũ, xem HANDOFF trước khi gộp nhánh `g4-viet-lai`.
 
 ## Cạm bẫy

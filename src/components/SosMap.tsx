@@ -56,20 +56,23 @@ function BaseLayers() {
   )
 }
 
-const rescuerIcon = L.divIcon({
-  className: 'rescuer-icon',
-  html: '🚤',
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
+function esc(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+}
 
-/** Cứu hộ đã tắt ca hoặc mất tín hiệu > 15 phút: hiện xám ở vị trí cuối cùng. */
-const rescuerOffIcon = L.divIcon({
-  className: 'rescuer-icon off',
-  html: '🚤',
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
+/**
+ * Cứu hộ = hình XUỒNG to, viền xanh dương; đội của mình viền xanh lá; đã tắt ca / mất tín hiệu
+ * > 15 phút thì xám (chỉ chỉ huy thấy). Dưới xuồng có tên đội.
+ */
+function rescuerIcon(kind: 'live' | 'mine' | 'off', label?: string) {
+  return L.divIcon({
+    className: 'rescuer-wrap',
+    html: `<div class="rescuer-icon ${kind}">🚤</div>${label ? `<span class="rescuer-label">${esc(label)}</span>` : ''}`,
+    iconSize: [46, 46],
+    iconAnchor: [23, 23],
+    popupAnchor: [0, -24],
+  })
+}
 
 const STALE_MS = 15 * 60 * 1000
 
@@ -91,13 +94,25 @@ const HOUSE_VULNERABLE = houseIcon(true)
 
 const meIcon = L.divIcon({ className: 'me-icon', html: '', iconSize: [18, 18], iconAnchor: [9, 9] })
 
+const PERSON_SVG =
+  '<svg viewBox="0 0 12 26" width="12" height="26" aria-hidden="true"><circle cx="6" cy="4" r="3.6"/><path d="M1 12.2C1 10.4 2.4 9 4.2 9h3.6C9.6 9 11 10.4 11 12.2V18H9.2v8H2.8v-8H1z"/></svg>'
+/** Vẽ tối đa chừng này hình người; đông hơn thì thêm số tổng ở góc. */
+const MAX_FIGURES = 5
+
+/**
+ * Người dân cần cứu = HÌNH NGƯỜI: 1 người 1 hình, 2 người 2 hình… (quá 5 thì 5 hình + số tổng).
+ * Màu nền = mức ưu tiên; viền xanh = đã có đội nhận; nguy cấp thì nháy.
+ */
 function sosIcon(color: string, people: number, assigned: boolean, critical: boolean) {
+  const n = Math.max(1, people)
+  const figures = Math.min(n, MAX_FIGURES)
+  const w = 20 + figures * 13
   return L.divIcon({
     className: 'sos-pin-wrap',
-    html: `<div class="sos-pin${assigned ? ' assigned' : ''}${critical ? ' critical' : ''}" style="background:${color}">${people}</div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -18],
+    html: `<div class="sos-pin${assigned ? ' assigned' : ''}${critical ? ' critical' : ''}" style="background:${color}">${PERSON_SVG.repeat(figures)}${n > figures ? `<b>${n}</b>` : ''}</div>`,
+    iconSize: [w, 40],
+    iconAnchor: [w / 2, 20],
+    popupAnchor: [0, -22],
   })
 }
 
@@ -138,6 +153,10 @@ interface Props {
   renderHouseholdPopup?: (p: Profile) => ReactNode
   /** Hiện cả cứu hộ đã tắt ca / mất tín hiệu (xám) */
   showOffline?: boolean
+  /** Đội của người đang xem (cứu hộ) — xuồng đội mình viền xanh lá */
+  myTeamId?: string | null
+  /** Chữ nhỏ dưới xuồng (tên đội) */
+  locationLabel?: (l: RescuerLocation) => string | undefined
   height?: string
 }
 
@@ -150,6 +169,8 @@ export function SosMap({
   households = [],
   renderHouseholdPopup,
   showOffline = false,
+  myTeamId,
+  locationLabel,
   height = '100%',
 }: Props) {
   const visibleLocations = useMemo(
@@ -192,7 +213,7 @@ export function SosMap({
       {visibleLocations.map((l) => {
         const live = isLive(l)
         return (
-          <Marker key={l.user_id} position={[l.lat, l.lng]} icon={live ? rescuerIcon : rescuerOffIcon} zIndexOffset={live ? 5000 : 3000}>
+          <Marker key={l.user_id} position={[l.lat, l.lng]} icon={rescuerIcon(!live ? 'off' : myTeamId && l.team_id === myTeamId ? 'mine' : 'live', locationLabel?.(l))} zIndexOffset={live ? 5000 : 3000}>
             {renderLocationPopup && <Popup>{renderLocationPopup(l)}</Popup>}
           </Marker>
         )
