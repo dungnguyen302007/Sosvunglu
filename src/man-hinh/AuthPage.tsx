@@ -2,14 +2,15 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { backend } from '../lib/backend'
 import type { GuestStatus } from '../lib/backend/types'
 import { distanceKm, formatKm, isValidPhone, normalizePhone } from '../lib/geo'
+import { getPosition, loiGpsGanNhat } from '../lib/device'
 import { useSosQueue } from '../lib/hooks'
 import { boMaKhoiLink, maTrongLink } from '../lib/link-moi'
 import { STATUS_LABEL, VULNERABLE_LABEL, WATER_LABEL } from '../lib/labels'
 import { storage } from '../lib/storage'
 import type { GuestSosPatch, SignUpInput, Sos, Vulnerable, WaterLevel } from '../types'
-import { CallButton, ErrorLine, PendingCard, Tabs } from '../components/common'
+import { CallButton, ErrorLine, PendingCard, Sheet, Tabs } from '../components/common'
 import { HomeLocation } from '../components/HomeLocation'
-import { isLive, SosMap } from '../components/SosMap'
+import { isLive, LocationPicker, SosMap } from '../components/SosMap'
 import { SosTrigger } from '../components/SosTrigger'
 
 type Tab = 'login' | 'register' | 'guest'
@@ -349,6 +350,8 @@ function GuestSos() {
   const [sentId, setSentId] = useState<string | null>(() => storage.get<string>('guest_sos_id'))
   const [status, setStatus] = useState<GuestStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null)
+  const [fixing, setFixing] = useState(false)
   const queue = useSosQueue((r) => {
     if (r.kind === 'guest') {
       storage.set('guest_sos_id', r.id)
@@ -439,6 +442,42 @@ function GuestSos() {
                 <p className="muted small">Hình người là vị trí bạn đã gửi. Khi có đội nhận, xuồng của đội sẽ hiện trên bản đồ này.</p>
               )}
               <SosMap sos={[guestAsSos(sentId, status)]} locations={boats} locationLabel={() => status?.team_name ?? undefined} height="240px" />
+              <p className="muted small">
+                📍 Vị trí đã gửi: {g.accuracy != null ? `sai số khoảng ${Math.round(g.accuracy)} m` : 'chọn tay trên bản đồ'}. Sai chỗ thì sửa:
+              </p>
+              <button
+                className="btn btn-outline btn-block"
+                onClick={async () => {
+                  const pos = await getPosition()
+                  if (pos && !pos.stale) await patch({ lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy })
+                  else setError(loiGpsGanNhat())
+                }}
+              >
+                📍 Cập nhật vị trí của tôi (GPS)
+              </button>
+              <button
+                className="btn btn-outline btn-block"
+                onClick={() => {
+                  setPicked({ lat: g.lat, lng: g.lng })
+                  setFixing(true)
+                }}
+              >
+                🗺️ Chỉnh vị trí trên bản đồ
+              </button>
+              <Sheet open={fixing} onClose={() => setFixing(false)} title="Chạm vào chỗ bạn đang đứng">
+                <LocationPicker value={picked} onPick={setPicked} />
+                <button
+                  className="btn btn-danger btn-block"
+                  disabled={!picked}
+                  onClick={async () => {
+                    if (!picked) return
+                    await patch({ lat: picked.lat, lng: picked.lng, accuracy: null })
+                    setFixing(false)
+                  }}
+                >
+                  Lưu vị trí này
+                </button>
+              </Sheet>
             </div>
 
             <div className="card">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { backend } from '../lib/backend'
-import { getBattery, getPosition, POOR_ACCURACY_M } from '../lib/device'
+import { getBattery, getPosition, loiGpsGanNhat, POOR_ACCURACY_M } from '../lib/device'
 import { distanceKm, formatKm, type LatLng } from '../lib/geo'
 import { useLive, useNow, useSosQueue } from '../lib/hooks'
 import { boMaKhoiLink, maTrongLink } from '../lib/link-moi'
@@ -163,8 +163,9 @@ function SosStatus({ sos, teamName, onChanged }: { sos: Sos; teamName: string | 
     setBusy(true)
     const [pos, battery] = await Promise.all([getPosition(), getBattery()])
     setBusy(false)
-    if (pos) await patch({ lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, battery })
-    else setError('Không lấy được GPS. Hãy chọn vị trí trên bản đồ.')
+    // Vị trí CŨ lưu trong máy (stale) không phải là "đã cập nhật" — báo rõ thay vì lặng lẽ gửi lại số cũ.
+    if (pos && !pos.stale) await patch({ lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, battery })
+    else setError(loiGpsGanNhat())
   }
 
   return (

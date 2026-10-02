@@ -19,6 +19,16 @@ export const GOOD_ACCURACY_M = 30
 /** Sai số (m) lớn hơn mức này thì cảnh báo người dùng vị trí có thể lệch. */
 export const POOR_ACCURACY_M = 150
 
+/** Vì sao lần lấy vị trí gần nhất hỏng — để báo người dùng đúng việc cần làm (null = không lỗi). */
+let lyDoHongGps: 'tu-choi' | 'khong-co' | null = null
+
+/** Câu hướng dẫn theo lý do GPS hỏng lần gần nhất. */
+export function loiGpsGanNhat(): string {
+  if (lyDoHongGps === 'tu-choi')
+    return 'Trình duyệt đang CHẶN quyền vị trí của trang này. Bấm biểu tượng bên trái thanh địa chỉ → Quyền → Vị trí → Cho phép (nếu máy báo "không thể yêu cầu cấp quyền": tắt các app đang nổi trên màn hình rồi thử lại). Trong lúc đó hãy chọn vị trí trên bản đồ.'
+  return 'Không bắt được GPS (trong nhà / sóng yếu?). Ra chỗ thoáng rồi thử lại, hoặc chọn vị trí trên bản đồ.'
+}
+
 /**
  * Lấy vị trí: theo dõi GPS tối đa `timeoutMs` và lấy kết quả CHÍNH XÁC NHẤT
  * (lần đo đầu tiên thường là vị trí thô theo Wi-Fi/mạng, lệch hàng trăm mét đến vài km).
@@ -31,6 +41,7 @@ export function getPosition(timeoutMs = 12000): Promise<Position | null> {
       resolve(last ? { ...last, stale: true } : null)
     }
     if (!('geolocation' in navigator)) return fallback()
+    lyDoHongGps = null
 
     let best: Position | null = null
     let finished = false
@@ -58,7 +69,10 @@ export function getPosition(timeoutMs = 12000): Promise<Position | null> {
         if (!best || (pos.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) best = pos
         if ((pos.accuracy ?? Infinity) <= GOOD_ACCURACY_M) finish()
       },
-      finish,
+      (e) => {
+        lyDoHongGps = e.code === e.PERMISSION_DENIED ? 'tu-choi' : 'khong-co'
+        finish()
+      },
       { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs },
     )
     timer = window.setTimeout(finish, timeoutMs)
