@@ -25,8 +25,10 @@ let lyDoHongGps: 'tu-choi' | 'khong-co' | null = null
 /** Câu hướng dẫn theo lý do GPS hỏng lần gần nhất. */
 export function loiGpsGanNhat(): string {
   if (lyDoHongGps === 'tu-choi')
-    return 'Trình duyệt đang CHẶN quyền vị trí của trang này. Bấm biểu tượng bên trái thanh địa chỉ → Quyền → Vị trí → Cho phép (nếu máy báo "không thể yêu cầu cấp quyền": tắt các app đang nổi trên màn hình rồi thử lại). Trong lúc đó hãy chọn vị trí trên bản đồ.'
-  return 'Không bắt được GPS (trong nhà / sóng yếu?). Ra chỗ thoáng rồi thử lại, hoặc chọn vị trí trên bản đồ.'
+    return /iPhone|iPad/i.test(navigator.userAgent)
+      ? 'Máy đang CHẶN quyền vị trí của trang này. iPhone: Cài đặt → Quyền riêng tư & Bảo mật → Dịch vụ định vị → bật, rồi chọn trình duyệt đang dùng (Trang web Safari) → "Khi dùng ứng dụng". Quay lại trang, tải lại và bấm Cho phép khi được hỏi.'
+      : 'Trình duyệt đang CHẶN quyền vị trí của trang này. Bấm biểu tượng bên trái thanh địa chỉ → Quyền → Vị trí → Cho phép (nếu máy báo "không thể yêu cầu cấp quyền": tắt các app đang nổi trên màn hình rồi thử lại).'
+  return 'Không bắt được GPS (trong nhà / sóng yếu?). Ra chỗ thoáng rồi thử lại.'
 }
 
 /**
@@ -66,12 +68,15 @@ export function getPosition(timeoutMs = 12000): Promise<Position | null> {
           accuracy: Math.round(p.coords.accuracy),
           at: new Date().toISOString(),
         }
+        lyDoHongGps = null
         if (!best || (pos.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) best = pos
         if ((pos.accuracy ?? Infinity) <= GOOD_ACCURACY_M) finish()
       },
       (e) => {
         lyDoHongGps = e.code === e.PERMISSION_DENIED ? 'tu-choi' : 'khong-co'
-        finish()
+        // Bị chặn quyền thì chờ thêm cũng vô ích → dừng ngay. Lỗi khác (chưa bắt được vệ tinh…) thường
+        // chỉ thoáng qua, nhất là trên iPhone → cứ chờ tiếp tới hết giờ, có toạ độ thì vẫn lấy.
+        if (e.code === e.PERMISSION_DENIED) finish()
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs },
     )
