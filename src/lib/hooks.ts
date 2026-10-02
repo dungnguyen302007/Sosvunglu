@@ -118,6 +118,49 @@ export function useDispatchLoop(enabled = true) {
   }, [enabled])
 }
 
+/**
+ * Giữ MÀN HÌNH SÁNG khi `enabled` (cứu hộ đang trong ca). Đây là web app: màn hình tắt là trình duyệt
+ * ngừng chạy trang — không kêu bíp khi có SOS mới, không gửi vị trí. Giữ sáng là cách duy nhất không
+ * cần thông báo đẩy. Trả về: 'on' đang giữ, 'unsupported' máy không hỗ trợ, 'off' chưa giữ được.
+ * Chuyển app khác rồi quay lại thì hệ điều hành nhả khoá → xin lại khi trang hiện trở lại.
+ */
+export function useKeepScreenOn(enabled: boolean): 'on' | 'off' | 'unsupported' {
+  const [state, setState] = useState<'on' | 'off' | 'unsupported'>('off')
+  useEffect(() => {
+    if (!enabled) {
+      setState('off')
+      return
+    }
+    type Khoa = { release: () => Promise<void>; addEventListener: (t: 'release', cb: () => void) => void }
+    const wl = (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<Khoa> } }).wakeLock
+    if (!wl) {
+      setState('unsupported')
+      return
+    }
+    let khoa: Khoa | null = null
+    let huy = false
+    const xin = async () => {
+      if (huy || document.visibilityState !== 'visible') return
+      try {
+        khoa = await wl.request('screen')
+        if (huy) return void khoa.release().catch(() => {})
+        setState('on')
+        khoa.addEventListener('release', () => !huy && setState('off'))
+      } catch {
+        setState('off') // pin yếu / chế độ tiết kiệm pin từ chối
+      }
+    }
+    void xin()
+    document.addEventListener('visibilitychange', xin)
+    return () => {
+      huy = true
+      document.removeEventListener('visibilitychange', xin)
+      void khoa?.release().catch(() => {})
+    }
+  }, [enabled])
+  return state
+}
+
 /** Đồng hồ tick để cập nhật "x phút trước". */
 export function useNow(intervalMs = 30000) {
   const [now, setNow] = useState(() => Date.now())

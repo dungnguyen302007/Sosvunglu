@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { backend } from '../lib/backend'
 import { beep, lastKnownPosition, moTaLoiGps, vibrate } from '../lib/device'
 import { distanceKm, formatKm, type LatLng } from '../lib/geo'
-import { useDispatchLoop, useLive, useNow } from '../lib/hooks'
+import { useDispatchLoop, useKeepScreenOn, useLive, useNow } from '../lib/hooks'
 import { TEAM_STATUS_LABEL, timeAgo } from '../lib/labels'
 import { sortByPriority } from '../lib/priority'
 import { storage } from '../lib/storage'
@@ -95,6 +95,7 @@ export function RescuerHome({ profile }: { profile: Profile }) {
   const locs = useLive(() => backend.listLocations(), 20000)
   const [notice, setNotice] = useState<string | null>(null)
   useDispatchLoop(onDuty)
+  const sang = useKeepScreenOn(onDuty)
   const teams = useLive(() => backend.listTeams(), 60000)
   const now = useNow()
   const [error, setError] = useState<string | null>(null)
@@ -237,6 +238,13 @@ export function RescuerHome({ profile }: { profile: Profile }) {
         )}
       </div>
       {notice && <p className="ok">{notice}</p>}
+      {onDuty && sang === 'on' && <p className="muted small">💡 Đang giữ màn hình sáng để nghe báo SOS và gửi vị trí. Đừng bấm nút nguồn tắt màn hình; nhớ cắm sạc dự phòng.</p>}
+      {onDuty && sang !== 'on' && (
+        <p className="warn-line">
+          ⚠️ Máy này không tự giữ sáng màn hình được{sang === 'off' ? ' (tắt chế độ tiết kiệm pin rồi mở lại app)' : ''}. Màn hình tắt là KHÔNG nghe báo SOS và ngừng gửi vị trí — hãy
+          đặt máy "không tự tắt màn hình".
+        </p>
+      )}
       {onDuty && pos && canHoiThongBao && (
         <button className="btn btn-outline btn-small" onClick={() => void xinThongBao()}>
           🔔 Bật thông báo khi có SOS mới (không bắt buộc)
